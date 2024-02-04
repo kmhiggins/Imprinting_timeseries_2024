@@ -1,0 +1,84 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+library(tidyr)
+library(ggplot2)
+library(dplyr)
+library(matrixStats)
+library(DESeq2)
+library(stringr)
+library(gridExtra)
+library(pheatmap)
+library(reshape2)
+library(MaizePal)
+library("ggalluvial")
+```
+
+```{r}
+imp.all <- read.table("//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/mRNA_2021/combined_NAM_gene_counts.txt",header=T,stringsAsFactors = F)
+imp.all.new <- read.table("//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/NAM/combined_NAM_counts_genes_Sep23.txt",header=T,stringsAsFactors = F)
+##Join the two dataframes
+
+imp.all2 <- full_join(imp.all,imp.all.new, by= 'ID')
+#bad.data <- imp.all2[,c(grepl("PH207|CML333|Mo17|P39",colnames(imp.all2)))]
+#imp.all2[,c(grepl("PH207|CML333|Mo17|P39",colnames(imp.all2)))] <- NULL
+
+#Get rid of the rows that are summary stats
+imp.all.tmp <- subset(imp.all2, grepl("Z|TE", imp.all2$ID))
+#Put back into imp.all2 after checking its 5 rows shorter
+imp.all2 <- imp.all.tmp
+#Remove imp.all.tmp
+imp.all.tmp <-NULL
+#Convert any NA values to zero before normalizing
+imp.all2[is.na(imp.all2)] <- 0
+
+imp.all.rpm <- imp.all2
+for(i in 2:81){
+  imp.all.rpm[,i] <- (imp.all2[,i]/sum(imp.all2[,i])) * 1e6
+}
+imp.all.rpm4 <- imp.all.rpm
+row.names(imp.all.rpm4) <- imp.all.rpm4$ID
+imp.all.rpm4$ID <- NULL
+#W22 <- subset(W22.heat, rowSums(W22.heat) > 1000)
+imp.rpm <- as.matrix(subset(imp.all.rpm4,imp.all.rpm[rowSums(imp.all.rpm) > 50000]))
+#Heatmap of all libraries
+pheatmap((imp.rpm/rowMaxs(imp.rpm)),border_color = NA,fontsize = 8)
+```
+
+```{r}
+#Plot PCA of all samples
+
+#Get log2 of all samples
+imp.rpm.log2 <- log2(1+imp.all.rpm4[,c(29:32,47:80)])
+row.names(imp.rpm.log2) <- row.names(imp.all.rpm4)
+#read in RPM data info
+contrast <- c("KxB", "KxB", "KxB", "KxB", "AxB", "AxB", "AxB", "AxB", "CxB",  "CxB", "CxB",  "CxB",  "CxB",  "CxB",  "DxB", "DxB", "DxB", "DxB", "DxB", "DxB", "ExB", "ExB", "ExB", "ExB", "ExB", "ExB", "FxB", "FxB",  "FxB",  "FxB",  "FxB",  "FxB",  "GxB", "GxB", "GxB", "GxB", "GxB","GxB" )
+direction <- c("A", "A", "B", "B", "A", "A", "B", "B", "A", "A", "A", "B", "B", "B", "A", "A", "A", "B", "B", "B",  "A", "A", "A", "B", "B", "B", "A", "A", "A", "B", "B", "B", "A", "A", "A", "B", "B", "B")
+
+#calculate genes whose average expression > 1
+imp.rpm.log2[is.na(imp.rpm.log2)] <- 0
+avgExpression <- as.data.frame(rowMeans(imp.rpm.log2))
+rownames(avgExpression) <- row.names(imp.rpm.log2)
+avgExpFilt <- filter(avgExpression, rowMeans(imp.rpm.log2) > 1)
+#filter rpm for genes whose mean expression > 1
+select <- imp.rpm.log2[rownames(imp.rpm.log2) %in% rownames(avgExpFilt),]
+# do PCA
+pc <- prcomp(t(select))
+scores <- data.frame(pc$x, contrast, direction)
+library(ggrepel)
+ggplot(scores, aes(x = PC1, y = PC2, shape = direction, colour = contrast)) + geom_point(size = 5) + geom_label_repel(aes(label = rownames(scores)), box.padding   = 1, point.padding = 2, label.size = 0.01, max.overlaps = 100)  + ggtitle("Principal Components using log2RPM for RNA seq reads") + theme_bw()
+
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
