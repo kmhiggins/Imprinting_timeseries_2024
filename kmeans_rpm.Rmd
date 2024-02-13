@@ -1,0 +1,66 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+library(ggplot2)
+library(DESeq2)
+library(MaizePal)
+library(rstatix)
+library(pheatmap)
+library(viridisLite)
+library(viridis)
+library(ggforce)
+library(ggExtra)
+library(gridExtra)
+library(matrixStats)
+library("ggalluvial")
+library(dplyr)
+library(data.table)
+```
+
+Read in count table
+
+```{r}
+counts_kmeans <- read.table("//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/combined_kmeans_counts.txt",header=T,stringsAsFactors = F)
+
+#Get rid of unnecessary columns 
+counts_kmeans2 <- subset(counts_kmeans, grepl("B73",counts_kmeans$ID))
+
+
+#Normalize counts_kmeans into reads per million
+counts_kmeans.rpm <- counts_kmeans2
+for(i in 2:13){
+  counts_kmeans.rpm[,i] <- (counts_kmeans2[,i]/sum(counts_kmeans2[,i])) * 1e6
+}
+
+#setDT(counts_kmeans)
+counts_kmeans.rpm2 <- counts_kmeans.rpm
+for(i in 2:13){
+  counts_kmeans.rpm2[,i] <- log2(counts_kmeans.rpm2[,i] + 1)
+}
+
+rownames(counts_kmeans.rpm) <- counts_kmeans.rpm$ID
+counts_kmeans.rpm$ID <- NULL 
+counts_kmeans.rpm3 <- as.matrix(counts_kmeans.rpm)
+
+counts_kmeans.keep <- subset(counts_kmeans.rpm,rowMeans(counts_kmeans.rpm[,1:3]) >= 0.5 | rowMeans(counts_kmeans.rpm[,4:6]) >= 0.5| rowMeans(counts_kmeans.rpm[,7:9]) >= 0.5 | rowMeans(counts_kmeans.rpm[,10:12] >= 0.5))
+
+counts_kmeans_keep2 <- as.matrix(counts_kmeans.keep)
+
+counts_kmeans.rpm4 <- (counts_kmeans_keep2/(rowMaxs(counts_kmeans_keep2, na.rm = TRUE)))
+
+
+#Figure out how to convert to table and get table/Rowmaxs(table)
+
+write.table(counts_kmeans.rpm, "//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/kmeans_rpm_table.txt", row.names = T, col.names = T, quote = F)
+write.table(counts_kmeans.rpm2, "//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/kmeans_log2rpm_table.txt", row.names = T, col.names = T, quote = F)
+
+write.table(counts_kmeans.rpm4, "//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/kmeans_rownormalized_zero_to_one.txt", row.names = T, col.names = T, quote = F)
+
+```
