@@ -1,0 +1,580 @@
+---
+
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r echo=FALSE}
+#https://www.r-bloggers.com/2019/10/cluster-multiple-time-series-using-k-means-2/
+
+
+#Import files
+kmeans_rownormalized_zero_to_one <-read.table("//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/kmeans_rownormalized_zero_to_one.txt", header = T)
+kmeans_rownormalized_zero_to_one_W22 <-read.table("//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/kmeans_rownormalized_zero_to_one_W22mat.txt", header = T)
+
+zein_names <- c("Zm00001eb166940",
+  "Zm00001eb313790",
+  "Zm00001eb315100",
+  "Zm00001eb355270",
+  "Zm00001eb166950",
+  "Zm00001eb267570",
+  "Zm00001eb313800",
+  "Zm00001eb030160",
+  "Zm00001eb303160",
+  "Zm00001eb303130",
+  "Zm00001eb166580",
+  "Zm00001eb281380",
+  "Zm00001eb030130",
+  "Zm00001eb166610",
+  "Zm00001eb166600",
+  "Zm00001eb166660",
+  "Zm00001eb166670",
+  "Zm00001eb171940")
+
+
+
+
+```
+
+
+```{r}
+# Install and load necessary packages
+if (!requireNamespace("pheatmap", quietly = TRUE)) {
+  install.packages("pheatmap")
+}
+if (!requireNamespace("factoextra", quietly = TRUE)) {
+  install.packages("factoextra")
+}
+if (!requireNamespace("plotly", quietly = TRUE)) {
+  install.packages("plotly")
+}
+if (!requireNamespace("NbClust", quietly = TRUE)) {
+  install.packages("NbClust")
+}
+
+library(dplyr)
+library(NbClust)
+library(tidyverse)
+library(lubridate)
+library(pwt9)
+library(purrr)
+library(stats)
+library(purrr)
+library(pheatmap)
+library(factoextra)
+library(plotly)
+library(factoextra)
+
+```
+
+
+```{r}
+head(kmeans_rownormalized_zero_to_one)
+
+
+# Add row names to a new column called 'ID'
+kmeans_rownormalized_zero_to_one$ID <- rownames(kmeans_rownormalized_zero_to_one)
+
+# Remove row names from the data frame
+rownames(kmeans_rownormalized_zero_to_one) <- NULL
+#Moves the ID column to the front
+kmeans_rownormalized_zero_to_one <- kmeans_rownormalized_zero_to_one[, c("ID", setdiff(names(kmeans_rownormalized_zero_to_one), "ID"))]
+kmeans_rownormalized_zero_to_one$feature_type <- ifelse(test = grepl("TE", kmeans_rownormalized_zero_to_one$ID),"TE","gene")
+kmeans_rownormalized_zero_to_one <- subset(kmeans_rownormalized_zero_to_one, kmeans_rownormalized_zero_to_one$feature_type == "gene")
+kmeans_rownormalized_zero_to_one$feature_type <- NULL
+
+#Using the K-means algorithm to determine optimal clusters
+log2rpm <- map_dbl(1:10, ~{kmeans(select(kmeans_rownormalized_zero_to_one, -ID), ., nstart=13,iter.max = 15 )$tot.withinss})
+
+n_clust <- 1:10
+
+elbow_df <- as.data.frame(cbind("n_clust" = n_clust, "wss" = log2rpm))
+
+
+ggplot(elbow_df) +
+  geom_line(aes(x = n_clust, y = log2rpm), colour = "#82518c") +
+  theme_gray()
+
+
+```
+
+
+```{r}
+# 5 is our cluster 
+# Run the Kmeans algorithm
+# centers contain the "average" time series
+
+clusters <- kmeans(select(kmeans_rownormalized_zero_to_one, -ID), centers = 9)
+
+#sum squares between sum of squares and total sum of squares
+#It's basically a measure of the goodness of the classification k-means has found. SS  stands for Sum of Squares, so it's the usual decomposition of deviance in deviance "Between" and deviance "Within". Ideally you want a clustering that has the properties of internal cohesion and external separation, i.e. the BSS/TSS ratio should approach 1.
+
+#try 9
+
+#61.7%
+print(clusters)
+
+
+# Extract cluster centers with rownames as 'cluster'
+centers <- rownames_to_column(as.data.frame(clusters$centers), "cluster")
+
+
+#clusters contains the cluster item, which tells me which cluster the different timepoints belong to
+kmeans_rownormalized_zero_to_one_wide <- kmeans_rownormalized_zero_to_one %>%
+  mutate(cluster = clusters$cluster)
+
+All_Heat_map <- kmeans_rownormalized_zero_to_one_wide
+
+
+# Now, let’s prepare the data for visualization.
+kmeans_rownormalized_zero_to_one_wide <- kmeans_rownormalized_zero_to_one_wide %>%
+  mutate(
+    `11_DAP_mean` = rowMeans(select(., 2:4), na.rm = TRUE),
+    `14_DAP_mean` = rowMeans(select(., 5:7), na.rm = TRUE),
+    `17_DAP_mean` = rowMeans(select(., 8:10), na.rm = TRUE),
+    `21_DAP_mean` = rowMeans(select(., 11:13), na.rm = TRUE)
+  ) %>%
+  select(-2:-13)
+
+
+
+
+centers_wide <- centers %>%
+  mutate(
+    `11_DAP_mean` = rowMeans(select(., 2:4), na.rm = TRUE),
+    `14_DAP_mean` = rowMeans(select(., 5:7), na.rm = TRUE),
+    `17_DAP_mean` = rowMeans(select(., 8:10), na.rm = TRUE),
+    `21_DAP_mean` = rowMeans(select(., 11:13), na.rm = TRUE)
+  ) %>%
+  select(-2:-13)
+
+
+#Reshape your data into long format and then use ggplot2 to create a line plot
+kmeans_rownormalized_zero_to_one_long <- kmeans_rownormalized_zero_to_one_wide %>%
+  pivot_longer(cols = c(`11_DAP_mean`, `14_DAP_mean`, `17_DAP_mean`, `21_DAP_mean`),
+               names_to = "DAP",
+               values_to = "mean_value")
+
+
+kmeans_rownormalized_zero_to_one_long$ID2 <- substr(kmeans_rownormalized_zero_to_one_long$ID, 5, 19)
+
+newdf <- subset(kmeans_rownormalized_zero_to_one_long, kmeans_rownormalized_zero_to_one_long$ID2 %in% zein_names)
+
+table(newdf$cluster)
+
+newdf
+
+centers_long <- centers_wide %>%
+  pivot_longer(cols = c(`11_DAP_mean`, `14_DAP_mean`, `17_DAP_mean`, `21_DAP_mean`),
+               names_to = "DAP",
+               values_to = "logmean")
+
+#Plot it!!
+ggplot() +
+  geom_line(
+    data = kmeans_rownormalized_zero_to_one_long,
+    aes(y = mean_value, x = DAP, group = ID),
+    colour = "steelblue3",
+    size = 1,  # Adjust the size as needed
+    alpha = .06
+  ) +
+  facet_wrap(~cluster, nrow = 3) + 
+  geom_line(
+    data = centers_long,
+    aes(y = logmean, x = DAP, group = cluster),
+    colour = "red",
+    size = 1
+  ) +
+  theme_bw() +
+  theme(plot.caption = element_text(colour = "white")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) + ggtitle ("B73 k-mean Gene Expression")
+```
+
+#```{r}
+#Principal Component Analysis (PCA) Plots: Visualize the variance and relationships between samples in a reduced-dimensional space.
+
+###################
+# Perform Principal Component Analysis (PCA)
+pca_data <- select(kmeans_rownormalized_zero_to_one, -ID)
+pca_result <- prcomp(pca_data, scale. = TRUE)
+
+# Extract PC scores
+pc_scores <- as.data.frame(pca_result$x)
+
+# Convert cluster variable to factor
+kmeans_rownormalized_zero_to_one_wide$cluster <- as.factor(kmeans_rownormalized_zero_to_one_wide$cluster)
+
+# Plot PCA
+pca_plot <- fviz_pca_ind(pca_result, 
+             geom.ind = "point",
+             col.ind = kmeans_rownormalized_zero_to_one_wide$cluster,
+             palette = c("#82518c", "#b58900", "#0066cc", "#ff6666", "#009933", "#ff9900", "#993366", "#009999", "#cc0000", "#6600cc"),
+             addEllipses = TRUE,
+             ellipse.type = "confidence",
+             legend.title = "Cluster",
+             title = "Principal Component Analysis (PCA) Plot")
+
+# Convert ggplot object to a plotly object
+pca_plotly <- ggplotly(pca_plot)
+
+# Display the interactive plot
+pca_plotly
+
+###################
+
+
+#```
+
+```{r}
+#k-means for zeins
+
+
+ggplot()+
+  geom_line (data =newdf, aes(y = mean_value, x = DAP, group = ID),
+    colour = "steelblue3",
+    size = 1,  # Adjust the size as needed
+    alpha = .4 ) +
+  facet_wrap(~cluster, nrow = 3) + 
+  geom_line( data = centers_long, aes(y = logmean, x = DAP, group = cluster), colour = "red") +
+  theme_bw() +
+  theme(plot.caption = element_text(colour = "white"))+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + ggtitle("K-mean Zein Genes Expression")
+
+#Plot W22 on B73 cluster lines to see if its generally the same 
+  #Add ID column to kmeans W22 df 
+kmeans_rownormalized_zero_to_one_W22$ID <- row.names(kmeans_rownormalized_zero_to_one_W22)
+#Rearrange df to have ID at front
+kmeans_rownormalized_W22 <- kmeans_rownormalized_zero_to_one_W22[,c(12,1:11)]
+
+#Pull cluster data from B73
+kmeans_rownormalized_W22_wide <- left_join(kmeans_rownormalized_W22, kmeans_rownormalized_zero_to_one_wide[,c("ID","cluster")], by = "ID")
+
+# Now, let’s prepare the data for visualization.
+kmeans_rownormalized_W22_wide2 <- kmeans_rownormalized_W22_wide %>%
+  mutate(
+    `11_DAP_mean` = rowMeans(select(., 2:4), na.rm = TRUE),
+    `14_DAP_mean` = rowMeans(select(., 5:7), na.rm = TRUE),
+    `17_DAP_mean` = rowMeans(select(., 8:10), na.rm = TRUE),
+    `21_DAP_mean` = rowMeans(select(., 11:12), na.rm = TRUE)
+  ) %>%
+  select(-2:-12)
+
+
+
+centers_wide <- centers %>%
+  mutate(
+    `11_DAP_mean` = rowMeans(select(., 2:4), na.rm = TRUE),
+    `14_DAP_mean` = rowMeans(select(., 5:7), na.rm = TRUE),
+    `17_DAP_mean` = rowMeans(select(., 8:10), na.rm = TRUE),
+    `21_DAP_mean` = rowMeans(select(., 11:12), na.rm = TRUE)
+  ) %>%
+  select(-2:-12)
+
+
+#Reshape your data into long format and then use ggplot2 to create a line plot
+
+kmeans_rownormalized_W22_long <- kmeans_rownormalized_W22_wide2 %>%
+  pivot_longer(cols = c(`11_DAP_mean`, `14_DAP_mean`, `17_DAP_mean`, `21_DAP_mean`),
+               names_to = "DAP",
+               values_to = "mean_value")
+
+centers_long <- centers_wide %>%
+  pivot_longer(cols = c(`11_DAP_mean`, `14_DAP_mean`, `17_DAP_mean`, `21_DAP_mean`),
+               names_to = "DAP",
+               values_to = "logmean")
+
+kmeans_rownormalized_W22_long2<- subset(kmeans_rownormalized_W22_long, ! is.na(kmeans_rownormalized_W22_long$cluster))
+
+ggplot() +
+  geom_line(
+    data = kmeans_rownormalized_W22_long2,
+    aes(y = mean_value, x = DAP, group = ID),
+    colour = "steelblue3",
+    size = 1,  # Adjust the size as needed
+    alpha = .05
+  ) +
+  facet_wrap(~cluster, nrow = 3) + 
+  geom_line(
+    data = centers_long,
+    aes(y = logmean, x = DAP, group = cluster),
+    colour = "red",
+    size = 1
+  ) +
+  theme_bw() +
+  theme(plot.caption = element_text(colour = "white")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) + ggtitle ("W22xB73 k-mean Gene Expression")
+
+##No real similarity, okay lets look at zeins and see what happens there
+kmeans_rownormalized_W22_long$ID2 <- substr(kmeans_rownormalized_W22_long$ID, 5,19)
+
+newdf2 <- subset(kmeans_rownormalized_W22_long, kmeans_rownormalized_W22_long$ID2 %in% zein_names)
+
+table(newdf2$cluster)
+
+ggplot()+
+  geom_line (data =newdf2, aes(y = mean_value, x = DAP, group = ID),
+    colour = "steelblue3",
+    size = 1,  # Adjust the size as needed
+    alpha = .4 ) +
+  facet_wrap(~cluster, nrow = 3) + 
+  geom_line( data = centers_long, aes(y = logmean, x = DAP, group = cluster), colour = "red") +
+  theme_bw() +
+  theme(plot.caption = element_text(colour = "white"))+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + ggtitle("K-mean Zein Genes Expression")
+
+
+#Write genes in each cluster to files for use in main timepoint script
+write.table(kmeans_rownormalized_zero_to_one_wide[,c(1:2)],file = "//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/cluster_assignment.txt", quote = F, col.names = T, sep = "\t", row.names = F)
+```
+
+
+
+```{r}
+#Go term enrichment analysis
+#load packages
+library(topGO)
+library(tidyverse)
+library(scales)
+
+fname = '//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/B73_GO.out'
+go <-
+  read.table(
+    fname,
+    quote = '"',
+    sep = "\t",
+    header = TRUE,
+    colClasses = c('goid' = 'character', 'qpid' = 'character')
+  )
+# some filtering
+go_filt <- go[(go$ARGOT_PPV > 0.5), ]
+
+go_filt$goid <- paste0('GO:', go_filt$goid)
+
+panzer_to_golist <- function(panzer_df){
+  go_df <- aggregate( goid ~ qpid, data=panzer_df, FUN=c)
+  structure(go_df$goid, .Names=go_df$qpid)
+}
+all_golist <- panzer_to_golist(go_filt)
+
+gene_list <- kmeans_rownormalized_zero_to_one_wide[,c(1,2)]
+
+gene_list$genenames <- substr(gene_list$ID, 5, 20)
+
+kmeans_rownormalized_zero_to_one_wide$genenames <- substr(kmeans_rownormalized_zero_to_one_wide$ID,5,20)
+#Create individual gene lists for the clusters
+cluster1 <- as.data.frame(subset(kmeans_rownormalized_zero_to_one_wide[,c("genenames")], kmeans_rownormalized_zero_to_one_wide$cluster == "1"))
+colnames(cluster1) <- "genenames"
+cluster1 <- cluster1 %>% mutate(myInput = "yes")
+
+cluster2 <- as.data.frame(subset(kmeans_rownormalized_zero_to_one_wide[,c("genenames")], kmeans_rownormalized_zero_to_one_wide$cluster == "2"))
+colnames(cluster2) <- "genenames"
+cluster2 <- cluster2 %>% mutate(myInput = "yes")
+
+cluster3 <- as.data.frame(subset(kmeans_rownormalized_zero_to_one_wide[,c("genenames")], kmeans_rownormalized_zero_to_one_wide$cluster == "3"))
+colnames(cluster3) <- "genenames"
+cluster3 <- cluster3 %>% mutate(myInput = "yes")
+
+cluster4 <- as.data.frame(subset(kmeans_rownormalized_zero_to_one_wide[,c("genenames")], kmeans_rownormalized_zero_to_one_wide$cluster == "4"))
+colnames(cluster4) <- "genenames"
+cluster4 <- cluster4 %>% mutate(myInput = "yes")
+
+cluster5 <- as.data.frame(subset(kmeans_rownormalized_zero_to_one_wide[,c("genenames")], kmeans_rownormalized_zero_to_one_wide$cluster == "5"))
+colnames(cluster5) <- "genenames"
+cluster5 <- cluster5 %>% mutate(myInput = "yes")
+
+cluster6 <- as.data.frame(subset(kmeans_rownormalized_zero_to_one_wide[,c("genenames")], kmeans_rownormalized_zero_to_one_wide$cluster == "6"))
+colnames(cluster6) <- "genenames"
+cluster6 <- cluster6 %>% mutate(myInput = "yes")
+
+cluster7 <- as.data.frame(subset(kmeans_rownormalized_zero_to_one_wide[,c("genenames")], kmeans_rownormalized_zero_to_one_wide$cluster == "7"))
+colnames(cluster7) <- "genenames"
+cluster7 <- cluster7 %>% mutate(myInput = "yes")
+
+cluster8 <- as.data.frame(subset(kmeans_rownormalized_zero_to_one_wide[,c("genenames")], kmeans_rownormalized_zero_to_one_wide$cluster == "8"))
+colnames(cluster8) <- "genenames"
+cluster8 <- cluster8 %>% mutate(myInput = "yes")
+
+cluster9 <- as.data.frame(subset(kmeans_rownormalized_zero_to_one_wide[,c("genenames")], kmeans_rownormalized_zero_to_one_wide$cluster == "9"))
+colnames(cluster9) <- "genenames"
+cluster9 <- cluster9 %>% mutate(myInput = "yes")
+
+#Get all genes from annotation list
+gene_names <- names(all_golist)
+#We don't have the transcript IDs, so remove protein IDs from gene_names before formatting as df
+gene_names2 <- substr(gene_names, 1,15)
+myGenes <- as.data.frame(gene_names2)
+colnames(myGenes) <- "genenames"
+
+#Get dfs ready
+myGenes_1 <- left_join(myGenes,cluster1)
+  myGenes_1$myInput <- myGenes_1$myInput %>%
+  replace_na('no')
+  cluster1_GO <- factor(as.integer(myGenes_1$myInput == 'yes'))
+  names(cluster1_GO) <- gene_names
+
+myGenes_2 <- left_join(myGenes,cluster2)
+  myGenes_2$myInput <- myGenes_2$myInput %>%
+  replace_na('no')
+  cluster2_GO <- factor(as.integer(myGenes_2$myInput == 'yes'))
+  names(cluster2_GO) <- gene_names
+  
+myGenes_3 <- left_join(myGenes,cluster3)
+  myGenes_3$myInput <- myGenes_3$myInput %>%
+  replace_na('no')
+  cluster3_GO <- factor(as.integer(myGenes_3$myInput == 'yes'))
+  names(cluster3_GO) <- gene_names
+
+myGenes_4 <- left_join(myGenes,cluster4)
+  myGenes_4$myInput <- myGenes_4$myInput %>%
+  replace_na('no')
+  cluster4_GO <- factor(as.integer(myGenes_4$myInput == 'yes'))
+  names(cluster4_GO) <- gene_names
+  
+myGenes_5 <- left_join(myGenes,cluster5)
+  myGenes_5$myInput <- myGenes_5$myInput %>%
+  replace_na('no')
+  cluster5_GO <- factor(as.integer(myGenes_5$myInput == 'yes'))
+  names(cluster5_GO) <- gene_names
+
+myGenes_6 <- left_join(myGenes,cluster6)
+  myGenes_6$myInput <- myGenes_6$myInput %>%
+  replace_na('no')
+  cluster6_GO <- factor(as.integer(myGenes_6$myInput == 'yes'))
+  names(cluster6_GO) <- gene_names
+  
+myGenes_7 <- left_join(myGenes,cluster7)
+  myGenes_7$myInput <- myGenes_7$myInput %>%
+  replace_na('no')
+  cluster7_GO <- factor(as.integer(myGenes_7$myInput == 'yes'))
+  names(cluster7_GO) <- gene_names
+
+myGenes_8 <- left_join(myGenes,cluster8)
+  myGenes_8$myInput <- myGenes_8$myInput %>%
+  replace_na('no')
+  cluster8_GO <- factor(as.integer(myGenes_8$myInput == 'yes'))
+  names(cluster8_GO) <- gene_names
+  
+myGenes_9 <- left_join(myGenes,cluster9)
+  myGenes_9$myInput <- myGenes_9$myInput %>%
+  replace_na('no')
+  cluster9_GO <- factor(as.integer(myGenes_9$myInput == 'yes'))
+  names(cluster9_GO) <- gene_names
+
+#Set up GO enrichment analysis 
+run_topGO <- function(gene_list, ontology, gene2GO_list){
+  topGO_data <- new("topGOdata", ontology = ontology, allGenes = gene_list,
+                    annot = annFUN.gene2GO, gene2GO = gene2GO_list)
+  fishers_result <- runTest(topGO_data, algorithm = "elim", statistic = "fisher")
+  fishers_table <- GenTable(topGO_data, Fishers = fishers_result, useLevels = TRUE)
+  fishers_table$Ontology <- ontology
+  fishers_table$Fishers <- as.numeric(fishers_table$Fishers)
+  fishers_table
+}
+
+#Run TopGO on all ontology terms and clusters 
+clust1_BP <- run_topGO(cluster1_GO, "BP", all_golist)
+clust1_MF <- run_topGO(cluster1_GO, "MF", all_golist)
+clust1_CC <- run_topGO(cluster1_GO, "CC", all_golist)
+clust1GO <- (rbind(clust1_BP, clust1_MF, clust1_CC))
+clust1GO <- clust1GO[order(clust1GO$Fishers),]
+
+
+clust2_BP <- run_topGO(cluster2_GO, "BP", all_golist)
+clust2_MF <- run_topGO(cluster2_GO, "MF", all_golist)
+clust2_CC <- run_topGO(cluster2_GO, "CC", all_golist)
+clust2GO <- (rbind(clust2_BP, clust2_MF, clust2_CC))
+clust2GO <- clust2GO[order(clust2GO$Fishers),]
+
+clust3_BP <- run_topGO(cluster3_GO, "BP", all_golist)
+clust3_MF <- run_topGO(cluster3_GO, "MF", all_golist)
+clust3_CC <- run_topGO(cluster3_GO, "CC", all_golist)
+clust3GO <- (rbind(clust3_BP, clust3_MF, clust3_CC))
+clust3GO <- clust3GO[order(clust3GO$Fishers),]
+
+clust4_BP <- run_topGO(cluster4_GO, "BP", all_golist)
+clust4_MF <- run_topGO(cluster4_GO, "MF", all_golist)
+clust4_CC <- run_topGO(cluster4_GO, "CC", all_golist)
+clust4GO <- (rbind(clust4_BP, clust4_MF, clust4_CC))
+clust4GO <- clust4GO[order(clust4GO$Fishers),]
+
+clust5_BP <- run_topGO(cluster5_GO, "BP", all_golist)
+clust5_MF <- run_topGO(cluster5_GO, "MF", all_golist)
+clust5_CC <- run_topGO(cluster5_GO, "CC", all_golist)
+clust5GO <- (rbind(clust5_BP, clust5_MF, clust5_CC))
+clust5GO <- clust5GO[order(clust5GO$Fishers),]
+
+clust6_BP <- run_topGO(cluster6_GO, "BP", all_golist)
+clust6_MF <- run_topGO(cluster6_GO, "MF", all_golist)
+clust6_CC <- run_topGO(cluster6_GO, "CC", all_golist)
+clust6GO <- (rbind(clust6_BP, clust6_MF, clust6_CC))
+clust6GO <- clust6GO[order(clust6GO$Fishers),]
+
+clust7_BP <- run_topGO(cluster7_GO, "BP", all_golist)
+clust7_MF <- run_topGO(cluster7_GO, "MF", all_golist)
+clust7_CC <- run_topGO(cluster7_GO, "CC", all_golist)
+clust7GO <- (rbind(clust7_BP, clust7_MF, clust7_CC))
+clust7GO <- clust7GO[order(clust7GO$Fishers),]
+
+clust8_BP <- run_topGO(cluster8_GO, "BP", all_golist)
+clust8_MF <- run_topGO(cluster8_GO, "MF", all_golist)
+clust8_CC <- run_topGO(cluster8_GO, "CC", all_golist)
+clust8GO <- (rbind(clust8_BP, clust8_MF, clust8_CC))
+clust8GO <- clust8GO[order(clust8GO$Fishers),]
+
+clust9_BP <- run_topGO(cluster9_GO, "BP", all_golist)
+clust9_MF <- run_topGO(cluster9_GO, "MF", all_golist)
+clust9_CC <- run_topGO(cluster9_GO, "CC", all_golist)
+clust9GO <- (rbind(clust9_BP, clust9_MF, clust9_CC))
+clust9GO <- clust9GO[order(clust9GO$Fishers),]
+
+#Make function to create bar plots of enriched terms
+myBarPlot <- function(table , term ) {
+  table <- table %>% mutate(word = case_when(Significant == 1 ~ "hit",
+                                             TRUE ~ "hits"))
+  ggplot(table, aes(reorder(Term, -log10(Fishers)),
+                    -log10(Fishers), fill = Ontology)) +
+    geom_bar(stat = 'identity') +
+    scale_fill_manual(values = c(
+      "BP" = "#9531b8",
+      "MF" = "#9dd745",
+      "CC" = "#da4218"
+    )) +
+    geom_text(aes(label = paste(Significant, word, "of", Annotated)),
+              hjust = 1.2,
+              color = "white") +
+    theme_classic(base_size = 14) +
+    ylab("- log10 p-value") +
+    xlab("") +
+    labs(title = paste0('GO Analysis (', term, ")")) +
+    scale_y_continuous(expand = expansion(mult = c(0, .1)),
+                       breaks = scales::pretty_breaks()) +
+    theme(legend.position = "none") +
+    coord_flip()
+}
+
+clust1_plot <- myBarPlot(table = clust1GO, term = "Cluster 1")
+clust2_plot <- myBarPlot(table = clust2GO, term = "Cluster 2")
+clust3_plot <- myBarPlot(table = clust3GO, term = "Cluster 3")
+clust4_plot <- myBarPlot(table = clust4GO, term = "Cluster 4")
+clust5_plot <- myBarPlot(table = clust5GO, term = "Cluster 5")
+clust6_plot <- myBarPlot(table = clust6GO, term = "Cluster 6")
+clust7_plot <- myBarPlot(table = clust7GO, term = "Cluster 7")
+clust8_plot <- myBarPlot(table = clust8GO, term = "Cluster 8")
+clust9_plot <- myBarPlot(table = clust9GO, term = "Cluster 9")
+
+clust1_plot
+clust2_plot
+clust3_plot
+clust4_plot
+clust5_plot
+clust6_plot
+clust7_plot
+clust8_plot
+clust9_plot
+```
+
+
