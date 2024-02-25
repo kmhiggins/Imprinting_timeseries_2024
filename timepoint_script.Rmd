@@ -25,34 +25,34 @@ library(reshape2)
 ```
 
 ```{r}
-counts <- read.table("//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/combined_timepoint_counts.txt",header=T,stringsAsFactors = F)
+counts <- read.table("//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/combined_counts_W22xB73_recips_timeseries.txt",header=T,stringsAsFactors = F)
 
 #Change row name to the gene ID
-rownames(counts) <- counts$ID
-counts$ID <- NULL
+rownames(counts) <- counts$Geneid
+counts$Geneid <- NULL
 
 #Normalize counts into reads per million
 counts.rpm <- counts
-for(i in 1:26){
+for(i in 1:23){
   counts.rpm[,i] <- (counts[,i]/sum(counts[,i])) * 1e6
 }
 ##Create heatmap to see if groups cluster together
 counts.rpm2 <- subset(counts.rpm, grepl("Zm|TE", rownames(counts.rpm)))
-counts.rpm.3 <- counts.rpm2[,1:25]
+counts.rpm.3 <- counts.rpm2[,1:23]
 
 data_subset <- as.matrix(counts.rpm.3[rowSums(counts.rpm.3)>1000,])
 
-pheatmap((data_subset/rowMaxs(data_subset)),border_color = NA,fontsize = 8)
+pheatmap((as.matrix(data_subset)/rowMaxs(as.matrix(data_subset))), border_color = NA, fontsize = 8, show_rownames = F)
 
 ##Correlation heatmap
 library(NMF)
 corr <- cor(counts.rpm.3)
-aheatmap(corr,main = "Correlation beween samples",labCol=substr(colnames(counts.rpm.3),1,4),labRow=substr(colnames(counts.rpm.3),1,4))
+pheatmap::pheatmap(corr,main = "Correlation beween samples",labCol=substr(colnames(counts.rpm.3),1,4),labRow=substr(colnames(counts.rpm.3),1,4))
 
 
 #Subset only the counts getting rid of nonaligned or multimapping
 counts2 <- subset(counts, grepl("Zm|TE", rownames(counts)))
-counts.de <- counts2[,1:25]
+counts.de <- counts2[,1:23]
 rownames(counts.de) <- row.names(counts2)
 
 #Get rid of rows with <10 reads in non-normalized set
@@ -64,7 +64,7 @@ counts2.denominator <- counts2
 # remove non-feature and ambiguous reads
 
 
-summary.stats.libraries <- data.frame(cbind(colSums(counts2.denominator[,2:25]),(colSums(counts2.numerator[,2:25])/colSums(counts2.denominator[,2:25]))*100))
+summary.stats.libraries <- data.frame(cbind(colSums(counts2.denominator[,2:23]),(colSums(counts2.numerator[,2:23])/colSums(counts2.denominator[,2:23]))*100))
 names(summary.stats.libraries) <- c("Reads","Percent_Unique")
 mean(summary.stats.libraries$Percent_Unique)
 
@@ -72,16 +72,20 @@ mean(summary.stats.libraries$Percent_Unique)
 #counts.de.keep <- subset(counts.de,rowMeans(counts.rpm[,1:3]) >= 0.5 | rowMeans(counts.rpm[,4:6]) >= 0.5) 
 
 #Set sample information for DE calculation
-sample.info <- as.data.frame(cbind(paste(names(counts.de.keep)),c("BW11", "BW11", "BW11", "WB11", "WB11", "WB11", "BW14", "BW14", "BW14", "WB14", "WB14", "WB14", "BW17", "BW17", "BW17", "WB17", "WB17", "WB17", "BW21", "BW21", "BW21", "WB21", "WB21", "BW25", "WB25")))
+sample.info <- as.data.frame(cbind(paste(names(counts.de.keep)),c("BW11", "BW11", "BW11", "WB11", "WB11", "WB11", "BW14", "BW14", "BW14", "WB14", "WB14", "WB14", "BW17", "BW17", "BW17", "WB17", "WB17", "WB17", "BW21", "BW21", "BW21", "WB21", "WB21")))
 rownames(sample.info) <- sample.info[,1]
 sample.info$timepoint <- substr(sample.info$V2,3,4)
 sample.info$genotype <- substr(sample.info$V1,1,2)
+
+write.table(sample.info, file = "//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/sample.info.txt", col.names = T, row.names = F, quote = F)
 
 #Run DESeq
 dds <- DESeqDataSetFromMatrix(countData = counts.de.keep,colData = sample.info, design = ~ timepoint + genotype + timepoint:genotype)
 dds2 <- DESeq(dds, test = "LRT", reduced = ~ timepoint + genotype)
 keep <- rowSums(counts(dds2)) >1
 dds2 <- dds2[keep,]
+
+plotDispEsts(dds2)
 #Get names of different tests performed
 resultsNames(dds2)
 #make results tables
@@ -90,23 +94,91 @@ res_14v11 <- results(dds2, name = "timepoint_14_vs_11", alpha = .001 )
 res_21v11 <- results(dds2, name = "timepoint_21_vs_11", alpha = .001 )
 res_WBvBW <- results(dds2, name = "genotype_WB_vs_BW", alpha = .001 )
 res_int <- results(dds2, name = "Intercept", alpha = .001)
+
+res_14WB <- results(dds2, name = "timepoint14.genotypeWB")
 #Coerce results to dataframes
 out_17v11<- data.frame(res_17v11)
 out_14v11<- data.frame(res_14v11)
 out_21v11<- data.frame(res_21v11)
 out_WBvBW<- data.frame(res_WBvBW)
 out_int <- data.frame(res_int)
+out_14WB <- data.frame(res_14WB)
 
 rld <- rlog(dds2, blind=FALSE)
-a <- plotPCA(rld,intgroup="V2",ntop=10000)
-a
+colData(rld)
+PCA_time <- plotPCA(rld,intgroup="V2", ntop = 10000) + theme_classic() 
+PCA_time
 
-b <- plotPCA(rld,intgroup="genotype")
-b
+PCA_geno <- plotPCA(rld,intgroup="genotype", ntop = 10000)
+PCA_geno + theme_classic()
 
 #write.table(counts.rpm.3, file = "//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/timepoint.rpm.txt")
 
+#Make Differential expression calls based on adjusted p-value and fold change
+out_14v11$Diff_Exp <- ifelse(out_14v11$padj < .05 & out_14v11$log2FoldChange > 1, "up", ifelse(out_14v11$padj < .05 & out_14v11$log2FoldChange < -1, "down", "notDE"))
+out_17v11$Diff_Exp <- ifelse(out_17v11$padj < .05 & out_17v11$log2FoldChange > 1, "up", ifelse(out_17v11$padj < .05 & out_17v11$log2FoldChange < -1, "down", "notDE"))
+out_21v11$Diff_Exp <- ifelse(out_21v11$padj < .05 & out_21v11$log2FoldChange > 1, "up", ifelse(out_21v11$padj < .05 & out_21v11$log2FoldChange < -1, "down", "notDE"))
+out_14v11$ID <- row.names(out_14v11)
+out_17v11$ID <- row.names(out_17v11)
+out_21v11$ID <- row.names(out_21v11)
+
+#subset genes upregulated and down regulated at each timepoint
+
+
+
+DE_14v11 <- out_14v11[,c("ID", "Diff_Exp")]
+DE_14and17v11 <- left_join(DE_14v11, out_17v11[,c("ID", "Diff_Exp")], by = "ID")
+colnames(DE_14and17v11) <- c("ID", "DE_14DAP", "DE 17DAP")
+DE_time <-  left_join(DE_14and17v11, out_21v11[,c("ID", "Diff_Exp")], by = "ID")
+colnames(DE_time) <- c("ID", "DE_14DAP", "DE 17DAP","DE 21DAP")
+
+DE_time[is.na(DE_time)] <- "notDE"
+
+#Summarize all columns to see major patterns and plot
+sum_time <- DE_time %>% group_by(DE_14DAP,`DE 17DAP`,`DE 21DAP`) %>% dplyr::summarize(count = n())
+#Plot total genes up and down-regulated at each time point
 ```
+
+```{r} 
+#Plot barchart of total counts DE at each timepoint
+summary.14v11 <- data.frame(out_14v11 %>% group_by(Diff_Exp) %>% summarize(count = n()))
+summary.17v11 <- data.frame(out_17v11 %>% group_by(Diff_Exp) %>% summarize(count = n()))
+summary.21v11 <- data.frame(out_21v11 %>% group_by(Diff_Exp) %>% summarize(count = n()))
+
+summary.combined <- bind_rows(summary.14v11,summary.17v11,summary.21v11, .id = "Contrast")
+summary.combined$Contrast <- ifelse(summary.combined$Contrast == 1, "14DAP v 11DAP", ifelse(summary.combined$Contrast == 2, "17DAP v 11DAP", "21DAP v 11DAP"))
+
+summary.combined2 <- subset(summary.combined,summary.combined$Diff_Exp %in% c("up","down"))
+summary.combined2[summary.combined2$Diff_Exp == "down","count"] <- -summary.combined2[summary.combined2$Diff_Exp == "down","count"]
+
+ggplot() + geom_bar(aes(x=Contrast,y=count,fill=Diff_Exp),data=summary.combined2,stat="identity",position = "identity") + theme_classic()  +  theme(axis.text.x = element_text(angle=90, hjust=1)) + scale_fill_manual(values=c("orange","maroon")) 
+
+#How many of these are consistently up or down regulated?
+library(ggVennDiagram)
+#Subset Imprinting dfs so they are MEG or PEG
+up_14 <- subset(out_14v11, out_14v11$Diff_Exp == "up")
+up_17 <- subset(out_17v11, out_17v11$Diff_Exp == "up")
+up_21 <- subset(out_21v11, out_21v11$Diff_Exp == "up")
+
+down_14 <- subset(out_14v11, out_14v11$Diff_Exp == "down")
+down_17 <- subset(out_17v11, out_17v11$Diff_Exp == "down")
+down_21 <- subset(out_21v11, out_21v11$Diff_Exp == "down")
+
+
+#Same thing, but look at ID type too
+up_intersection <- list(A = up_14$ID, B = up_17$ID, C = up_21$ID)
+down_intersection <- list(A = down_14$ID, B = down_17$ID, C = down_21$ID)
+ggVennDiagram(up_intersection) + scale_fill_gradient(low = "gold2", high = "firebrick") + ggtitle("upregulated genes")
+ggVennDiagram(down_intersection) + scale_fill_gradient(low = "aquamarine3", high = "navy") + ggtitle("downregulated genes")
+```
+
+
+
+```{r}
+##Read in Cluster calls
+read.table(file = "//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/cluster_assignment.txt", col.names = T, sep = "\t")
+```
+
 
 ```{r}
 
@@ -114,17 +186,13 @@ b
 
 counts.rpm.keep <- subset(counts.rpm.3,rowSums(counts.rpm.3) >= 10) 
 
-#We want to know whether things are genes or TEs so we define that with this command, which asks if the rownames are longer than 20 characters (genes are 14 or 15 characters long) or if it contains the label 'TE' 
 
-counts.rpm.keep$feature_type <- ifelse(nchar(rownames(counts.rpm.keep)) > 20 |grepl("TE",rownames(counts.rpm.keep)), "TE","gene")# Label features as TEs or genes
-table(counts.rpm.keep$feature_type)
-
-counts.rpm.keep$genome <-ifelse(grepl("Zm00001e|B73|TE",rownames(counts.rpm.keep)),"B73",ifelse(grepl("Zm00004b|W22",rownames(counts.rpm.keep)), "W22","NA")) # Label which genome the feature annotation is from
+counts.rpm.keep$genome <-ifelse(grepl("Zm00001e|B73",rownames(counts.rpm.keep)),"B73",ifelse(grepl("Zm00004b|W22",rownames(counts.rpm.keep)), "W22","NA")) # Label which genome the feature annotation is from
 table(counts.rpm.keep$genome)
 
 
 #Subset one contrast
-imp.11DAP.rpm <- counts.rpm.keep[,c(1:6,26,27)]
+imp.11DAP.rpm <- counts.rpm.keep[,c(1:6,24)]
 #Give the contrast a name, in this case it would be the timepoint
 imp.11DAP.rpm$contrast <- "11DAP"
 #Create a new column to simplify using which genome the gene originated from 
@@ -133,7 +201,7 @@ imp.11DAP.rpm$type <- ifelse(imp.11DAP.rpm$genome == "B73","A","B")
 imp.11DAP.rpm$feature <- rownames(imp.11DAP.rpm)
 
 #Rename columns, reduce the 'cross' columns for comparisons with fewer columns
-names(imp.11DAP.rpm) <- c("cross1","cross2","cross3", "cross4","cross5","cross6","feature_type","genome","contrast","type","feature")
+names(imp.11DAP.rpm) <- c("cross1","cross2","cross3", "cross4","cross5","cross6","genome","contrast","type","feature")
 
 #Create the A_mean and B_mean, in this example B73 is the first 3 columns of the subset dataframe, so I ask for the mean of those three columns as the A_mean, and the other 3 as the B_mean
 imp.11DAP.rpm$A_mean <- rowMeans(imp.11DAP.rpm[,1:3])
@@ -143,7 +211,7 @@ imp.11DAP.rpm$B_mean <- rowMeans(imp.11DAP.rpm[,4:6])
 imp.11DAP.rpm$maternal_preference <- ifelse(imp.11DAP.rpm$type == "A",imp.11DAP.rpm$A_mean/(imp.11DAP.rpm$B_mean + imp.11DAP.rpm$A_mean) ,imp.11DAP.rpm$B_mean/(imp.11DAP.rpm$B_mean + imp.11DAP.rpm$A_mean))
 
 #Subset one contrast
-imp.14DAP.rpm <- counts.rpm.keep[,c(7:12,26,27)]
+imp.14DAP.rpm <- counts.rpm.keep[,c(7:12,24)]
 #Give the contrast a name, in this case it would be the timepoint
 imp.14DAP.rpm$contrast <- "14DAP"
 #Create a new column to simplify using which genome the gene originated from 
@@ -152,7 +220,7 @@ imp.14DAP.rpm$type <- ifelse(imp.14DAP.rpm$genome == "B73","A","B")
 imp.14DAP.rpm$feature <- rownames(imp.14DAP.rpm)
 
 #Rename columns, reduce the 'cross' columns for comparisons with fewer columns
-names(imp.14DAP.rpm) <- c("cross1","cross2","cross3", "cross4","cross5","cross6","feature_type","genome","contrast","type","feature")
+names(imp.14DAP.rpm) <- c("cross1","cross2","cross3", "cross4","cross5","cross6","genome","contrast","type","feature")
 
 #Create the A_mean and B_mean, in this example B73 is the first 3 columns of the subset dataframe, so I ask for the mean of those three columns as the A_mean, and the other 3 as the B_mean
 imp.14DAP.rpm$A_mean <- rowMeans(imp.14DAP.rpm[,1:3])
@@ -162,7 +230,7 @@ imp.14DAP.rpm$B_mean <- rowMeans(imp.14DAP.rpm[,4:6])
 imp.14DAP.rpm$maternal_preference <- ifelse(imp.14DAP.rpm$type == "A",imp.14DAP.rpm$A_mean/(imp.14DAP.rpm$B_mean + imp.14DAP.rpm$A_mean) ,imp.14DAP.rpm$B_mean/(imp.14DAP.rpm$B_mean + imp.14DAP.rpm$A_mean))
 
 #Subset one contrast
-imp.17DAP.rpm <- counts.rpm.keep[,c(13:18,26,27)]
+imp.17DAP.rpm <- counts.rpm.keep[,c(13:18,24)]
 #Give the contrast a name, in this case it would be the timepoint
 imp.17DAP.rpm$contrast <- "17DAP"
 #Create a new column to simplify using which genome the gene originated from 
@@ -171,7 +239,7 @@ imp.17DAP.rpm$type <- ifelse(imp.17DAP.rpm$genome == "B73","A","B")
 imp.17DAP.rpm$feature <- rownames(imp.17DAP.rpm)
 
 #Rename columns, reduce the 'cross' columns for comparisons with fewer columns
-names(imp.17DAP.rpm) <- c("cross1","cross2","cross3", "cross4","cross5","cross6","feature_type","genome","contrast","type","feature")
+names(imp.17DAP.rpm) <- c("cross1","cross2","cross3", "cross4","cross5","cross6","genome","contrast","type","feature")
 
 #Create the A_mean and B_mean, in this example B73 is the first 3 columns of the subset dataframe, so I ask for the mean of those three columns as the A_mean, and the other 3 as the B_mean
 imp.17DAP.rpm$A_mean <- rowMeans(imp.17DAP.rpm[,1:3])
@@ -181,7 +249,7 @@ imp.17DAP.rpm$B_mean <- rowMeans(imp.17DAP.rpm[,4:6])
 imp.17DAP.rpm$maternal_preference <- ifelse(imp.17DAP.rpm$type == "A",imp.17DAP.rpm$A_mean/(imp.17DAP.rpm$B_mean + imp.17DAP.rpm$A_mean) ,imp.17DAP.rpm$B_mean/(imp.17DAP.rpm$B_mean + imp.17DAP.rpm$A_mean))
 
 #Subset one contrast
-imp.21DAP.rpm <- counts.rpm.keep[,c(19:23,26,27)]
+imp.21DAP.rpm <- counts.rpm.keep[,c(19:23,24)]
 #Give the contrast a name, in this case it would be the timepoint
 imp.21DAP.rpm$contrast <- "21DAP"
 #Create a new column to simplify using which genome the gene originated from 
@@ -190,7 +258,7 @@ imp.21DAP.rpm$type <- ifelse(imp.21DAP.rpm$genome == "B73","A","B")
 imp.21DAP.rpm$feature <- rownames(imp.21DAP.rpm)
 
 #Rename columns, reduce the 'cross' columns for comparisons with fewer columns
-names(imp.21DAP.rpm) <- c("cross1","cross2","cross3", "cross4","cross5","feature_type","genome","contrast","type","feature")
+names(imp.21DAP.rpm) <- c("cross1","cross2","cross3", "cross4","cross5","genome","contrast","type","feature")
 
 #Create the A_mean and B_mean, in this example B73 is the first 3 columns of the subset dataframe, so I ask for the mean of those three columns as the A_mean, and the other 3 as the B_mean
 imp.21DAP.rpm$A_mean <- rowMeans(imp.21DAP.rpm[,1:3])
@@ -349,68 +417,6 @@ kmeans_RER <- imp.mat.all[,c(1,2,4,6,8)]
 kmeans_RER[is.na(kmeans_RER)] <- 0
 ```
 
-
-```{r}
-# 5 is our cluster 
-# Run the Kmeans algorithm
-# centers contain the "average" time series
-
-clusters <- kmeans(select(kmeans_RER, -feature), centers = 36)
-
-#sum squares between sum of squares and total sum of squares
-#It's basically a measure of the goodness of the classification k-means has found. SS  stands for Sum of Squares, so it's the usual decomposition of deviance in deviance "Between" and deviance "Within". Ideally you want a clustering that has the properties of internal cohesion and external separation, i.e. the BSS/TSS ratio should approach 1.
-
-#try 9
-
-#61.7%
-print(clusters)
-
-
-# Extract cluster centers with rownames as 'cluster'
-centers <- rownames_to_column(as.data.frame(clusters$centers), "cluster")
-
-
-#clusters contains the cluster item, which tells me which cluster the different timepoints belong to
-kmeans_RER_wide <- kmeans_RER %>%
-  mutate(cluster = clusters$cluster)
-
-All_Heat_map <- kmeans_RER_wide
-
-#Reshape your data into long format and then use ggplot2 to create a line plot
-kmeans_RER_long <- kmeans_RER_wide %>%
-  pivot_longer(cols = c(`mat_pref11`,`mat_pref14`, `mat_pref17`, `mat_pref21`),
-               names_to = "DAP",
-               values_to = "mean_value")
-
-centers_long <- centers %>%
-  pivot_longer(cols = c(`mat_pref11`,`mat_pref14`, `mat_pref17`, `mat_pref21`),
-               names_to = "DAP",
-               values_to = "mean_value")
-
-
-kmeans_RER_long$feature2 <- substr(kmeans_RER_long$feature, 5, 19)
-
-#Plot it!!
-ggplot() +
-  geom_line(
-    data = kmeans_RER_long,
-    aes(y = mean_value, x = DAP, group = feature),
-    colour = "steelblue3",
-    size = 1,  # Adjust the size as needed
-    alpha = .06
-  ) +
-  facet_wrap(~cluster, nrow = 3) + 
-  geom_line(
-    data = centers_long,
-    aes(y = mean_value, x = DAP, group = cluster),
-    colour = "red",
-    size = 1
-  ) +
-  theme_bw() +
-  theme(plot.caption = element_text(colour = "white")) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) + ggtitle ("B73 k-mean Gene Expression")
-```
-
 ```{r}
 give.n <- function(x){
    return(c(y = mean(x), label = length(x)))
@@ -433,12 +439,12 @@ imp.14.filter <- subset(imp.14DAP.rpm2,imp.14DAP.rpm2$A_mean >= 1 | imp.14DAP.rp
 imp.17.filter <- subset(imp.17DAP.rpm2,imp.17DAP.rpm2$A_mean >= 1 | imp.17DAP.rpm2$B_mean >= 1)
 imp.21.filter <- subset(imp.21DAP.rpm2,imp.21DAP.rpm2$A_mean >= 1 | imp.21DAP.rpm2$B_mean >= 1)
 
-a <- ggplot(imp.11.filter,aes(x=genome,y=maternal_preference,fill=genome))+ geom_abline(slope=0, intercept=.33) + geom_abline(slope=0, intercept=.66) + geom_violin() + theme_classic() + theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()) + facet_wrap(.~contrast,scales="free_x")  + stat_summary(fun.data = give.n, geom = "text") + scale_fill_manual(values = maize_pal("HighlandMAGIC"))
-b <- ggplot(imp.14.filter,aes(x=genome,y=maternal_preference,fill=genome))+ geom_abline(slope=0, intercept=.33) + geom_abline(slope=0, intercept=.66) + geom_violin() + theme_classic() + theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()) + facet_wrap(.~contrast,scales="free_x")  + stat_summary(fun.data = give.n, geom = "text") + scale_fill_manual(values = maize_pal("HighlandMAGIC"))
-c <- ggplot(imp.17.filter,aes(x=genome,y=maternal_preference,fill=genome))+ geom_abline(slope=0, intercept=.33) + geom_abline(slope=0, intercept=.66) + geom_violin() + theme_classic() + theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()) + facet_wrap(.~contrast,scales="free_x")  + stat_summary(fun.data = give.n, geom = "text") + scale_fill_manual(values = maize_pal("HighlandMAGIC"))
-d <- ggplot(imp.21.filter,aes(x=genome,y=maternal_preference,fill=genome))+ geom_abline(slope=0, intercept=.33) + geom_abline(slope=0, intercept=.66) + geom_violin() + theme_classic() + theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()) + facet_wrap(.~contrast,scales="free_x")  + stat_summary(fun.data = give.n, geom = "text") + scale_fill_manual(values = maize_pal("HighlandMAGIC"))
+elevenDAP_plot <- ggplot(imp.11.filter,aes(x=genome,y=maternal_preference,fill=genome))+ geom_abline(slope=0, intercept=.33) + geom_abline(slope=0, intercept=.66) + geom_violin() + theme_classic() + theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()) + facet_wrap(.~contrast,scales="free_x")  + stat_summary(fun.data = give.n, geom = "text") + scale_fill_manual(values = maize_pal("HighlandMAGIC"))
+fourteenDAP_plot <- ggplot(imp.14.filter,aes(x=genome,y=maternal_preference,fill=genome))+ geom_abline(slope=0, intercept=.33) + geom_abline(slope=0, intercept=.66) + geom_violin() + theme_classic() + theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()) + facet_wrap(.~contrast,scales="free_x")  + stat_summary(fun.data = give.n, geom = "text") + scale_fill_manual(values = maize_pal("HighlandMAGIC"))
+seventeenDAP_plot <- ggplot(imp.17.filter,aes(x=genome,y=maternal_preference,fill=genome))+ geom_abline(slope=0, intercept=.33) + geom_abline(slope=0, intercept=.66) + geom_violin() + theme_classic() + theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()) + facet_wrap(.~contrast,scales="free_x")  + stat_summary(fun.data = give.n, geom = "text") + scale_fill_manual(values = maize_pal("HighlandMAGIC"))
+twentyoneDAP_plot <- ggplot(imp.21.filter,aes(x=genome,y=maternal_preference,fill=genome))+ geom_abline(slope=0, intercept=.33) + geom_abline(slope=0, intercept=.66) + geom_violin() + theme_classic() + theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()) + facet_wrap(.~contrast,scales="free_x")  + stat_summary(fun.data = give.n, geom = "text") + scale_fill_manual(values = maize_pal("HighlandMAGIC"))
 
-grid.arrange(a,b,c,d)
+grid.arrange(elevenDAP_plot, fourteenDAP_plot,seventeenDAP_plot,twentyoneDAP_plot)
 ```
 
 
@@ -464,7 +470,7 @@ ylim <- c(-2.5,2.5)
 plotMA(res.11DAP, ylim=ylim); drawLines()
 
 rld <- rlog(dds.11DAP, blind=FALSE)
-a <- plotPCA(rld,intgroup="sample_list.11DAP",ntop = 10000)
+a <- plotPCA(rld,intgroup="sample_list.11DAP",ntop = 10000) + theme_classic()
 a
 ```
 
@@ -491,7 +497,6 @@ e
 
 
 
-Use DEseq to call significance over a log2FC cutoff of 1 (2-fold, which is the expected ratio)
 ```{r}
 imp.all.de.14DAP <- counts[,7:12]
 rownames(imp.all.de.14DAP) <- row.names(counts)
@@ -513,7 +518,7 @@ ylim <- c(-2.5,2.5)
 plotMA(res.14DAP, ylim=ylim); drawLines()
 
 rld <- rlog(dds.14DAP, blind=FALSE)
-a <- plotPCA(rld,intgroup="sample_list.14DAP",ntop = 10000)
+a <- plotPCA(rld,intgroup="sample_list.14DAP",ntop = 10000) +theme_classic()
 ```
 
 Plot results with respect to RER
@@ -558,7 +563,8 @@ ylim <- c(-2.5,2.5)
 plotMA(res.17DAP, ylim=ylim); drawLines()
 
 rld <- rlog(dds.17DAP, blind=FALSE)
-a <- plotPCA(rld,intgroup="sample_list.17DAP",ntop = 10000)
+a <- plotPCA(rld,intgroup="sample_list.17DAP",ntop = 10000) + theme_classic()
+
 ```
 
 Plot results with respect to RER
@@ -605,7 +611,8 @@ plotMA(res.21DAP, ylim=ylim); drawLines()
 
 rld <- rlog(dds.21DAP, blind=FALSE)
 a <- plotPCA(rld,intgroup="sample_list.21DAP",ntop = 10000)
-a
+a + theme_classic()
+
 ```
 
 Plot results with respect to RER
@@ -630,10 +637,10 @@ grid.arrange(e,f,g,h, nrow = 2)
 
 
 ```{r}
-summary.11 <- data.frame(plot.out2.11DAP %>% group_by(genome,feature_type,imprint,contrast) %>% summarize(count = n()))
-summary.14 <- data.frame(plot.out2.14DAP %>% group_by(genome,feature_type,imprint,contrast) %>% summarize(count = n()))
-summary.21 <- data.frame(plot.out2.21DAP %>% group_by(genome,feature_type,imprint,contrast) %>% summarize(count = n()))
-summary.17 <- data.frame(plot.out2.17DAP %>% group_by(genome,feature_type,imprint,contrast) %>% summarize(count = n()))
+summary.11 <- data.frame(plot.out2.11DAP %>% group_by(genome,imprint,contrast) %>% summarize(count = n()))
+summary.14 <- data.frame(plot.out2.14DAP %>% group_by(genome,imprint,contrast) %>% summarize(count = n()))
+summary.21 <- data.frame(plot.out2.21DAP %>% group_by(genome,imprint,contrast) %>% summarize(count = n()))
+summary.17 <- data.frame(plot.out2.17DAP %>% group_by(genome,imprint,contrast) %>% summarize(count = n()))
 
 summary.combined <- rbind(summary.11,summary.14,summary.17,summary.21)
 summary.combined
@@ -643,17 +650,17 @@ summary.combined2[summary.combined2$imprint == "PEG","count"] <- -summary.combin
 summary.combined2$label <- paste(summary.combined2$genome,summary.combined2$contrast,sep="_")
 summary.combined2$label <- factor(summary.combined2$label, levels = c("B73_11DAP","W22_11DAP","B73_14DAP","W22_14DAP","B73_17DAP","W22_17DAP","B73_21DAP","W22_21DAP"))
 
-ggplot() + geom_bar(aes(x=label,y=count,fill=imprint),data=summary.combined2,stat="identity",position = "identity") + theme_classic()  +  theme(axis.text.x = element_text(angle=90, hjust=1)) + facet_grid(.~feature_type,scales="free") + scale_fill_manual(values=c("magenta2","navy")) 
+ggplot() + geom_bar(aes(x=label,y=count,fill=imprint),data=summary.combined2,stat="identity",position = "identity") + theme_classic()  +  theme(axis.text.x = element_text(angle=90, hjust=1)) + scale_fill_manual(values=c("magenta2","navy")) 
 
 ```
 
 ```{r}
 #Next I want to know how many genes are imprinted at all timepoints vs ones that change
  # First subset imprinted genes from each timepoint
-Imprints_11DAP <- subset(plot.out2.11DAP[,c(1,23)], plot.out2.11DAP$imprint != "no.imprint")
-Imprints_14DAP <- subset(plot.out2.14DAP[,c(1,23)], plot.out2.14DAP$imprint != "no.imprint")
-Imprints_17DAP <- subset(plot.out2.17DAP[,c(1,23)], plot.out2.17DAP$imprint != "no.imprint")
-Imprints_21DAP <- subset(plot.out2.21DAP[,c(1,22)], plot.out2.21DAP$imprint != "no.imprint")
+Imprints_11DAP <- subset(plot.out2.11DAP[,c(1,22)], plot.out2.11DAP$imprint != "no.imprint")
+Imprints_14DAP <- subset(plot.out2.14DAP[,c(1,22)], plot.out2.14DAP$imprint != "no.imprint")
+Imprints_17DAP <- subset(plot.out2.17DAP[,c(1,22)], plot.out2.17DAP$imprint != "no.imprint")
+Imprints_21DAP <- subset(plot.out2.21DAP[,c(1,21)], plot.out2.21DAP$imprint != "no.imprint")
   #Next bind those dataframes together so we can assess imprinting across time
 Imprints_11and14 <- full_join(Imprints_11DAP, Imprints_14DAP, by = "feature")
 Imprints_11_14_17 <- full_join(Imprints_11and14, Imprints_17DAP, by = "feature")
@@ -662,10 +669,8 @@ Imprints_all <- full_join(Imprints_11_14_17, Imprints_21DAP, by = "feature")
 Imprints_all[is.na(Imprints_all)] <- "No Imprint"
   #Rename columns to make the df easily understood
 colnames(Imprints_all) <- c("feature", "imprint.11", "imprint.14", "imprint.17", "imprint.21")
-  #Add in feature type column so we can get accurate counts for things 
-Imprints_all$feature_type <- ifelse(grepl("TE", Imprints_all$feature), "TE", ifelse(nchar(Imprints_all$feature) > 17, "TE", "gene"))
   #Create counts of imprinting for each gene
-Imprinting_counts <- Imprints_all %>% group_by(feature_type,imprint.11,imprint.14,imprint.17,imprint.21) %>% count()
+Imprinting_counts <- Imprints_all %>% group_by(imprint.11,imprint.14,imprint.17,imprint.21) %>% count()
 
 #Create venn diagram of overlaps 
 library(ggVennDiagram)
@@ -681,53 +686,11 @@ PEG_17 <- subset(Imprints_17DAP, Imprints_17DAP$imprint == "PEG")
 PEG_21 <- subset(Imprints_21DAP, Imprints_21DAP$imprint == "PEG")
 
 
+#Same thing, but look at feature type too
 MEG_intersection <- list(A = MEG_11$feature, B = MEG_14$feature, C = MEG_17$feature, D = MEG_21$feature)
 PEG_intersection <- list(A = PEG_11$feature, B = PEG_14$feature, C = PEG_17$feature, D = PEG_21$feature)
-ggVennDiagram(MEG_intersection) + scale_fill_gradient(low = "pink", high = "maroon")
-ggVennDiagram(PEG_intersection) + scale_fill_gradient(low = "skyblue", high = "navy")
-
-#Same thing, but look at feature type too
-MEG_11$feature_type <- ifelse(grepl("TE", MEG_11$feature), "TE", ifelse(nchar(MEG_11$feature) > 17, "TE", "gene"))
-MEG_11_TE <- subset(MEG_11, MEG_11$feature_type == "TE")
-MEG_11_gene <- subset(MEG_11, MEG_11$feature_type == "gene")
-
-MEG_14$feature_type <- ifelse(grepl("TE", MEG_14$feature), "TE", ifelse(nchar(MEG_14$feature) > 17, "TE", "gene"))
-MEG_14_TE <- subset(MEG_14, MEG_14$feature_type == "TE")
-MEG_14_gene <- subset(MEG_14, MEG_14$feature_type == "gene")
-
-MEG_17$feature_type <- ifelse(grepl("TE", MEG_17$feature), "TE", ifelse(nchar(MEG_17$feature) > 17, "TE", "gene"))
-MEG_17_TE <- subset(MEG_17, MEG_17$feature_type == "TE")
-MEG_17_gene <- subset(MEG_17, MEG_17$feature_type == "gene")
-
-MEG_21$feature_type <- ifelse(grepl("TE", MEG_21$feature), "TE", ifelse(nchar(MEG_21$feature) > 17, "TE", "gene"))
-MEG_21_TE <- subset(MEG_21, MEG_21$feature_type == "TE")
-MEG_21_gene <- subset(MEG_21, MEG_21$feature_type == "gene")
-
-PEG_11$feature_type <- ifelse(grepl("TE", PEG_11$feature), "TE", ifelse(nchar(PEG_11$feature) > 17, "TE", "gene"))
-PEG_11_TE <- subset(PEG_11, PEG_11$feature_type == "TE")
-PEG_11_gene <- subset(PEG_11, PEG_11$feature_type == "gene")
-
-PEG_14$feature_type <- ifelse(grepl("TE", PEG_14$feature), "TE", ifelse(nchar(PEG_14$feature) > 17, "TE", "gene"))
-PEG_14_TE <- subset(PEG_14, PEG_14$feature_type == "TE")
-PEG_14_gene <- subset(PEG_14, PEG_14$feature_type == "gene")
-
-PEG_17$feature_type <- ifelse(grepl("TE", PEG_17$feature), "TE", ifelse(nchar(PEG_17$feature) > 17, "TE", "gene"))
-PEG_17_TE <- subset(PEG_17, PEG_17$feature_type == "TE")
-PEG_17_gene <- subset(PEG_17, PEG_17$feature_type == "gene")
-
-PEG_21$feature_type <- ifelse(grepl("TE", PEG_21$feature), "TE", ifelse(nchar(PEG_21$feature) > 17, "TE", "gene"))
-PEG_21_TE <- subset(PEG_21, PEG_21$feature_type == "TE")
-PEG_21_gene <- subset(PEG_21, PEG_21$feature_type == "gene")
-
-MEG_intersection_TE <- list(A = MEG_11_TE$feature, B = MEG_14_TE$feature, C = MEG_17_TE$feature, D = MEG_21_TE$feature)
-PEG_intersection_TE <- list(A = PEG_11_TE$feature, B = PEG_14_TE$feature, C = PEG_17_TE$feature, D = PEG_21_TE$feature)
-ggVennDiagram(MEG_intersection_TE) + scale_fill_gradient(low = "pink", high = "maroon") + ggtitle("matTEs")
-ggVennDiagram(PEG_intersection_TE) + scale_fill_gradient(low = "skyblue", high = "navy") + ggtitle("patTEs")
-
-MEG_intersection_gene <- list(A = MEG_11_gene$feature, B = MEG_14_gene$feature, C = MEG_17_gene$feature, D = MEG_21_gene$feature)
-PEG_intersection_gene <- list(A = PEG_11_gene$feature, B = PEG_14_gene$feature, C = PEG_17_gene$feature, D = PEG_21_gene$feature)
-ggVennDiagram(MEG_intersection_gene) + scale_fill_gradient(low = "pink", high = "maroon") + ggtitle("matgenes")
-ggVennDiagram(PEG_intersection_gene) + scale_fill_gradient(low = "skyblue", high = "navy") + ggtitle("patgenes")
+ggVennDiagram(MEG_intersection) + scale_fill_gradient(low = "pink", high = "maroon") + ggtitle("matgenes")
+ggVennDiagram(PEG_intersection) + scale_fill_gradient(low = "skyblue", high = "navy") + ggtitle("patgenes")
 
 #write files of consistent MEGs and PEGs, legitimately just the genes for comparison across lines. Maybe highly imprinted genes are more conserved across lines. 
 
@@ -736,16 +699,16 @@ write.table(Imprints_all, "//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh
 
 ```{r}
 #Use my_gene function to look at all genes in the BC group of MEGs to determine if there is a pattern of expression happening. 
-BC_MEG <- subset(Imprints_all, Imprints_all$imprint.11 != "MEG" & Imprints_all$imprint.14 == "MEG" & Imprints_all$imprint.17 == "MEG"& Imprints_all$imprint.21 != "MEG" & Imprints_all$feature_type == "gene")
+BC_MEG <- subset(Imprints_all, Imprints_all$imprint.11 != "MEG" & Imprints_all$imprint.14 == "MEG" & Imprints_all$imprint.17 == "MEG"& Imprints_all$imprint.21 != "MEG" )
 
 bc_meg_list <- BC_MEG$feature
 
 #No major pattern I'm seeing with these 10 other than stringent cutoffs, most never have the paternal allele turn on really
     #Look at A subset of MEGs, and D subset of PEGs
 
-A_MEGs <- subset(Imprints_all, Imprints_all$imprint.11 == "MEG" & Imprints_all$imprint.14 != "MEG" & Imprints_all$imprint.17 != "MEG"& Imprints_all$imprint.21 != "MEG" & Imprints_all$feature_type == "gene")
+A_MEGs <- subset(Imprints_all, Imprints_all$imprint.11 == "MEG" & Imprints_all$imprint.14 != "MEG" & Imprints_all$imprint.17 != "MEG"& Imprints_all$imprint.21 != "MEG" )
 
-D_PEGs <- subset(Imprints_all, Imprints_all$imprint.11 != "PEG" & Imprints_all$imprint.14 != "PEG" & Imprints_all$imprint.17 != "PEG"& Imprints_all$imprint.21 == "PEG" & Imprints_all$feature_type == "gene")
+D_PEGs <- subset(Imprints_all, Imprints_all$imprint.11 != "PEG" & Imprints_all$imprint.14 != "PEG" & Imprints_all$imprint.17 != "PEG"& Imprints_all$imprint.21 == "PEG" )
 
 a_meg_list <- A_MEGs$feature
 d_peg_list <- D_PEGs$feature
@@ -794,18 +757,18 @@ gene_patterns(bc_meg_list, "MEGs at 14 and 17DAP only")
 gene_patterns(d_peg_list, "PEGs at only 21DAP")
 
 #Now that I've tested this, I need to look at MEGs and PEGs expressed at only one timepoint 
-B_MEGs <- subset(Imprints_all, Imprints_all$imprint.11 != "MEG" & Imprints_all$imprint.14 == "MEG" & Imprints_all$imprint.17 != "MEG"& Imprints_all$imprint.21 != "MEG" & Imprints_all$feature_type == "gene")
-C_MEGs <- subset(Imprints_all, Imprints_all$imprint.11 != "MEG" & Imprints_all$imprint.14 != "MEG" & Imprints_all$imprint.17 == "MEG"& Imprints_all$imprint.21 != "MEG" & Imprints_all$feature_type == "gene")
-D_MEGs <- subset(Imprints_all, Imprints_all$imprint.11 != "MEG" & Imprints_all$imprint.14 != "MEG" & Imprints_all$imprint.17 != "MEG"& Imprints_all$imprint.21 == "MEG" & Imprints_all$feature_type == "gene")
+B_MEGs <- subset(Imprints_all, Imprints_all$imprint.11 != "MEG" & Imprints_all$imprint.14 == "MEG" & Imprints_all$imprint.17 != "MEG"& Imprints_all$imprint.21 != "MEG" )
+C_MEGs <- subset(Imprints_all, Imprints_all$imprint.11 != "MEG" & Imprints_all$imprint.14 != "MEG" & Imprints_all$imprint.17 == "MEG"& Imprints_all$imprint.21 != "MEG" )
+D_MEGs <- subset(Imprints_all, Imprints_all$imprint.11 != "MEG" & Imprints_all$imprint.14 != "MEG" & Imprints_all$imprint.17 != "MEG"& Imprints_all$imprint.21 == "MEG" )
 
 b_meg_list <- B_MEGs$feature
 c_meg_list <- C_MEGs$feature
 d_meg_list <- D_MEGs$feature
 
-A_PEGs <- subset(Imprints_all, Imprints_all$imprint.11 == "PEG" & Imprints_all$imprint.14 != "PEG" & Imprints_all$imprint.17 != "PEG"& Imprints_all$imprint.21 != "PEG" & Imprints_all$feature_type == "gene")
-B_PEGs <- subset(Imprints_all, Imprints_all$imprint.11 != "PEG" & Imprints_all$imprint.14 == "PEG" & Imprints_all$imprint.17 != "PEG"& Imprints_all$imprint.21 != "PEG" & Imprints_all$feature_type == "gene")
-C_PEGs <- subset(Imprints_all, Imprints_all$imprint.11 != "PEG" & Imprints_all$imprint.14 != "PEG" & Imprints_all$imprint.17 == "PEG"& Imprints_all$imprint.21 != "PEG" & Imprints_all$feature_type == "gene")
-D_PEGs <- subset(Imprints_all, Imprints_all$imprint.11 != "PEG" & Imprints_all$imprint.14 != "PEG" & Imprints_all$imprint.17 != "PEG"& Imprints_all$imprint.21 == "PEG" & Imprints_all$feature_type == "gene")
+A_PEGs <- subset(Imprints_all, Imprints_all$imprint.11 == "PEG" & Imprints_all$imprint.14 != "PEG" & Imprints_all$imprint.17 != "PEG"& Imprints_all$imprint.21 != "PEG" )
+B_PEGs <- subset(Imprints_all, Imprints_all$imprint.11 != "PEG" & Imprints_all$imprint.14 == "PEG" & Imprints_all$imprint.17 != "PEG"& Imprints_all$imprint.21 != "PEG" )
+C_PEGs <- subset(Imprints_all, Imprints_all$imprint.11 != "PEG" & Imprints_all$imprint.14 != "PEG" & Imprints_all$imprint.17 == "PEG"& Imprints_all$imprint.21 != "PEG" )
+D_PEGs <- subset(Imprints_all, Imprints_all$imprint.11 != "PEG" & Imprints_all$imprint.14 != "PEG" & Imprints_all$imprint.17 != "PEG"& Imprints_all$imprint.21 == "PEG" )
 
 a_peg_list <- A_PEGs$feature
 b_peg_list <- B_PEGs$feature
@@ -821,12 +784,503 @@ gene_patterns(b_peg_list,"PEGs at only 14DAP")
 gene_patterns(c_peg_list,"PEGs at only 17DAP")
 
 #Hell, lets look at the consistent ones to see if its all just easy to understand
-all_MEGs <- subset(Imprints_all, Imprints_all$imprint.11 == "MEG" & Imprints_all$imprint.14 == "MEG" & Imprints_all$imprint.17 == "MEG"& Imprints_all$imprint.21 == "MEG" & Imprints_all$feature_type == "gene")
+all_MEGs <- subset(Imprints_all, Imprints_all$imprint.11 == "MEG" & Imprints_all$imprint.14 == "MEG" & Imprints_all$imprint.17 == "MEG"& Imprints_all$imprint.21 == "MEG" )
 
-all_PEGs <- subset(Imprints_all, Imprints_all$imprint.11 == "PEG" & Imprints_all$imprint.14 == "PEG" & Imprints_all$imprint.17 == "PEG"& Imprints_all$imprint.21 == "PEG" & Imprints_all$feature_type == "gene")
+all_PEGs <- subset(Imprints_all, Imprints_all$imprint.11 == "PEG" & Imprints_all$imprint.14 == "PEG" & Imprints_all$imprint.17 == "PEG"& Imprints_all$imprint.21 == "PEG" )
 
 gene_patterns(all_MEGs$feature, "Consistent MEGs") #Lol so boring
 gene_patterns(all_PEGs$feature, "Consistent PEGs")
 ```
 
+```{r}
+#Get rid of imprinted genes that are never expressed above 5 rpm in either direction of the cross
+imp.11.filter_higherthan5rpm <- subset(plot.out2.11DAP, plot.out2.11DAP$A_mean >= 5 | plot.out2.11DAP$B_mean >= 5)
+imp.14.filter_higherthan5rpm <- subset(plot.out2.14DAP, plot.out2.14DAP$A_mean >= 5 | plot.out2.14DAP$B_mean >= 5)
+imp.17.filter_higherthan5rpm <- subset(plot.out2.17DAP, plot.out2.17DAP$A_mean >= 5 | plot.out2.17DAP$B_mean >= 5)
+imp.21.filter_higherthan5rpm <- subset(plot.out2.21DAP, plot.out2.21DAP$A_mean >= 5 | plot.out2.21DAP$B_mean >= 5)
+
+imp.11.filter_higherthan5rpm2 <- subset(imp.11.filter_higherthan5rpm, imp.11.filter_higherthan5rpm$feature %in% Imprints_all$feature)
+imp.14.filter_higherthan5rpm2 <- subset(imp.14.filter_higherthan5rpm, imp.14.filter_higherthan5rpm$feature %in% Imprints_all$feature)
+imp.17.filter_higherthan5rpm2 <- subset(imp.17.filter_higherthan5rpm, imp.17.filter_higherthan5rpm$feature %in% Imprints_all$feature)
+imp.21.filter_higherthan5rpm2 <- subset(imp.21.filter_higherthan5rpm, imp.21.filter_higherthan5rpm$feature %in% Imprints_all$feature)
+
+high_imps_11and14 <- full_join(imp.11.filter_higherthan5rpm2[,c(1,13)], imp.14.filter_higherthan5rpm2[,c(1,13)], by="feature")
+colnames(high_imps_11and14) <- c("feature", "RER at 11DAP", "RER at 14DAP")
+
+high_imps_11and14and17 <- full_join(high_imps_11and14, imp.17.filter_higherthan5rpm2[,c(1,13)], by="feature")
+colnames(high_imps_11and14and17) <- c("feature", "RER at 11DAP", "RER at 14DAP", "RER at 17DAP")
+
+high_imps_all <- full_join(high_imps_11and14and17, imp.21.filter_higherthan5rpm2[,c(1,12)], by="feature")
+colnames(high_imps_all) <- c("feature", "RER at 11DAP", "RER at 14DAP", "RER at 17DAP", "RER at 21DAP")
+
+high_imps_all2 <- na.omit(high_imps_all)
+
+#melt df for plotting RER across time for those without missing values
+melted_highimps <- melt(high_imps_all2)
+melted_highimps2 <- left_join(melted_highimps, Imprints_all[,c(1,6)], by ="feature")
+
+ggplot(melted_highimps2, aes(x = variable, y = value, group = feature, fill=imprint, color=imprint)) + geom_point()+ggtitle("Imprints present in all contrasts with means above 5 rpm in either direction")+ geom_line()+ylab("Maternal Preference" )+xlab("Days After Pollination")+ ylim(0,1) +  theme_classic() + scale_color_manual(values = c("MEG"= "maroon","PEG"= "navy"))
+  
+```
+
+```{r}
+#Make RER heatmap 
+##Make dataframe of all expressed genes' RER then remove the ones not present in the imprint all df
+library(pheatmap)
+library(dendsort)
+
+plot.out_all <- full_join(plot.out.11DAP[,c(1,13)], plot.out.14DAP[,c(1,13)],by = "feature")
+plot.out_all2 <- full_join(plot.out_all, plot.out.17DAP[,c(1,13)], by = "feature")
+plot.out_all3 <- full_join(plot.out_all2, plot.out.21DAP[,c(1,12)], by = "feature")
+
+plot_all_imp <- subset(plot.out_all3, plot.out_all3$feature %in% Imprints_all$feature)
+colnames(plot_all_imp) <- c("feature", "11DAP", "14DAP", "17DAP", "21DAP")
+
+callback <- function(hcl, mat){
+    # Recalculate manhattan distances for reorder method
+    dists <- dist(mat, method = "manhattan")
+
+    # Perform reordering according to OLO method
+    hclust_olo <- reorder(hcl, dists)
+    return(hclust_olo)
+}
+
+#Create matrix for plotting
+RER_matrix <- as.matrix(na.omit(plot_all_imp[,c(2:5)]))
+
+RER_heat <- pheatmap::pheatmap(RER_matrix, show_rownames = F, cluster_cols = F, border_color = NA, main = "RER across time for imprinted genes", color = hcl.colors(50, "Batlow"), clustering_callback = callback)
+
+
+
+plot_all_imp2 <- left_join(plot_all_imp, plot.out.11DAP[,c("feature","A_mean","B_mean")], by = "feature")
+plot_all_imp3 <- left_join(plot_all_imp2, plot.out.14DAP[,c("feature","A_mean","B_mean")],by = "feature")
+plot_all_imp4 <- left_join(plot_all_imp3, plot.out.17DAP[,c("feature","A_mean","B_mean")],by = "feature")
+plot_all_imp5 <- left_join(plot_all_imp4, plot.out.21DAP[,c("feature","A_mean","B_mean")],by = "feature")
+
+colnames(plot_all_imp5) <- c("feature", "RER.11","RER.14","RER.17","RER.21", "A.mean11", "B.mean11", "A.mean14", "B.mean14", "A.mean17", "B.mean17", "A.mean21", "B.mean21")
+
+plot_all_imp6 <- plot_all_imp5
+
+#Normalize the data before splitting
+plot_all_imp6[,c(6:14)] <- plot_all_imp6[,c(6:13)]/rowMaxs(as.matrix(plot_all_imp6[,c(6:13)]))
+
+plot_all_imp6$maternal_allele <- ifelse(plot_all_imp6$A.mean11 > plot_all_imp6$B.mean11 & plot_all_imp6$RER.11 > .7 , "A", ifelse(plot_all_imp6$B.mean11 > plot_all_imp6$A.mean11 & plot_all_imp6$RER.11 > .7, "B", ifelse(plot_all_imp6$A.mean11 > plot_all_imp6$B.mean11 & plot_all_imp6$RER.11 < .7 , "B", ifelse(plot_all_imp6$B.mean11 > plot_all_imp6$A.mean11 & plot_all_imp6$RER.11 < .7, "A", "wh"))))
+
+table(plot_all_imp6$maternal_allele)
+
+#Separate into two heatmaps 
+forheatAmat <- subset(plot_all_imp6[,c(1,6,8,10,12)], plot_all_imp6$maternal_allele == "A")
+colnames(forheatAmat) <- c("feature", "11DAP", "14DAP","17DAP","21DAP")
+forheatBmat <- subset(plot_all_imp6[,c(1,7,9,11,13)], plot_all_imp6$maternal_allele == "B")
+colnames(forheatBmat) <- c("feature", "11DAP", "14DAP","17DAP","21DAP")
+maternal_exp <- rbind(forheatAmat,forheatBmat)
+
+forheatApat <- subset(plot_all_imp6[,c(1,6,8,10,12)], plot_all_imp6$maternal_allele == "B")
+colnames(forheatApat) <- c("feature", "11DAP", "14DAP","17DAP","21DAP")
+forheatBpat <- subset(plot_all_imp6[,c(1,7,9,11,13)], plot_all_imp6$maternal_allele == "A")
+colnames(forheatBpat) <- c("feature", "11DAP", "14DAP","17DAP","21DAP")
+paternal_exp <- rbind(forheatApat,forheatBpat)
+
+##attempt normalization of the reads so they can all be on one row
+maternal_exp2 <- maternal_exp
+rownames(maternal_exp2) <- maternal_exp2$feature
+maternal_exp2$feature <- NULL
+maternal_heat_matrix <- na.omit(as.matrix(maternal_exp2))
+
+mat_heat <- pheatmap::pheatmap(maternal_heat_matrix, show_rownames = F, cluster_cols = F, border_color = NA, main = "Maternal expression across time for imprinted genes", clustering_callback = callback)
+
+
+paternal_exp2 <- paternal_exp
+rownames(paternal_exp2) <- paternal_exp2$feature
+paternal_exp2$feature <- NULL
+paternal_heat_matrix <- na.omit(as.matrix(paternal_exp2))
+
+pat_heat <- pheatmap::pheatmap(paternal_heat_matrix, show_rownames = F, cluster_cols = F, border_color = NA, main = "Paternal expression across time for imprinted genes", clustering_callback = callback)
+
+RER_heat
+mat_heat
+pat_heat
+
+
+#Those still dont look right, I'm going to put the dfs back together and see how they look plotted
+
+heat_tmp <- left_join(maternal_exp, paternal_exp, by = "feature")
+heat_matrix <- na.omit(as.matrix(heat_tmp[,c(2:9)]))
+pheatmap(heat_matrix, cluster_rows = T, cluster_cols = F)
+
+#Trying one more way to make things clear
+plot_all_imp5$maternal_allele <- ifelse(plot_all_imp5$A.mean11 > plot_all_imp5$B.mean11 & plot_all_imp5$RER.11 > .7 , "A", ifelse(plot_all_imp5$B.mean11 > plot_all_imp5$A.mean11 & plot_all_imp5$RER.11 > .7, "B", ifelse(plot_all_imp5$A.mean11 > plot_all_imp5$B.mean11 & plot_all_imp5$RER.11 < .7 , "B", ifelse(plot_all_imp5$B.mean11 > plot_all_imp5$A.mean11 & plot_all_imp5$RER.11 < .7, "A", "wh"))))
+
+table(plot_all_imp5$maternal_allele)
+
+#Separate into two heatmaps 
+forheatAmat2 <- subset(plot_all_imp5[,c(1,6,8,10,12)], plot_all_imp5$maternal_allele == "A")
+colnames(forheatAmat2) <- c("feature", "maternal_allele_11DAP", "maternal_allele_14DAP","maternal_allele_17DAP","maternal_allele_21DAP")
+forheatBmat2 <- subset(plot_all_imp5[,c(1,7,9,11,13)], plot_all_imp5$maternal_allele == "B")
+colnames(forheatBmat2) <- c("feature", "maternal_allele_11DAP", "maternal_allele_14DAP","maternal_allele_17DAP","maternal_allele_21DAP")
+maternal_exp3 <- rbind(forheatAmat2,forheatBmat2)
+
+forheatApat2 <- subset(plot_all_imp5[,c(1,6,8,10,12)], plot_all_imp5$maternal_allele == "B")
+colnames(forheatApat2) <- c("feature", "paternal_allele_11DAP", "paternal_allele_14DAP","paternal_allele_17DAP","paternal_allele_21DAP")
+forheatBpat2 <- subset(plot_all_imp5[,c(1,7,9,11,13)], plot_all_imp5$maternal_allele == "A")
+colnames(forheatBpat2) <- c("feature", "paternal_allele_11DAP", "paternal_allele_14DAP","paternal_allele_17DAP","paternal_allele_21DAP")
+paternal_exp3 <- rbind(forheatApat2,forheatBpat2)
+
+##attempt normalization of the reads so they can all be on one row
+test_this <- left_join(maternal_exp3, paternal_exp3, by = "feature")
+rownames(test_this) <- test_this$feature
+test_this$feature <- NULL
+scale_test <- log10(test_this+1)
+
+pheatmap::pheatmap(test_this, cluster_cols = F, show_rownames = F, scale = "row")
+pheatmap::pheatmap(scale_test, cluster_cols = F, show_rownames = F)
+
+```
+
+```{r}
+patterns_imprinting <- test_this
+patterns_imprinting[is.na(patterns_imprinting)] <- 0  
+#Classify Imprinting patterns by whether the other allele never turns on or it does turn on 
+patterns_imprinting$feature <- rownames(patterns_imprinting)
+
+#Add in imprinting calls from Imprints all df
+  #Create imprint column in Imprints all df
+Imprints_all$imprint <- ifelse(Imprints_all$imprint.11 == "MEG"|Imprints_all$imprint.14 == "MEG"|Imprints_all$imprint.17 == "MEG"|Imprints_all$imprint.21 == "MEG", "MEG", ifelse(Imprints_all$imprint.11 == "PEG"|Imprints_all$imprint.14 == "PEG"|Imprints_all$imprint.17 == "PEG"|Imprints_all$imprint.21 == "PEG", "PEG", "this shouldn't be necessary"))
+patterns_imprinting2 <- left_join(patterns_imprinting, Imprints_all[,c(1,6)], by = "feature")
+
+
+patterns_imprinting2$pattern <- ifelse(rowMeans(patterns_imprinting2[,c(1:4)]) < 1 & patterns_imprinting2$imprint == "PEG", "maternal allele never on", ifelse(rowMeans(patterns_imprinting2[,c(5:8)]) < 1 & patterns_imprinting2$imprint == "MEG", "paternal allele never on", ifelse(patterns_imprinting2$imprint == "MEG" & patterns_imprinting2[,c(8)] > patterns_imprinting2[,c(5)], "paternal allele goes up", ifelse(patterns_imprinting2$imprint == "MEG" & patterns_imprinting2[,c(8)] < patterns_imprinting2[,c(5)], "paternal allele goes down",ifelse(patterns_imprinting2$imprint == "PEG" & patterns_imprinting2[,c(4)] > patterns_imprinting2[,c(1)], "maternal allele goes up", ifelse(patterns_imprinting2$imprint == "PEG" & patterns_imprinting2[,c(4)] < patterns_imprinting2[,c(1)], "maternal allele goes down", "unclear"))))))
+
+
+
+pattern_count <- patterns_imprinting2 %>% group_by(imprint, pattern) %>% dplyr::summarize(count = n())
+pattern_freq <-  patterns_imprinting2 %>% group_by(imprint, pattern) %>% summarise(n=n()) %>% mutate(Freq=n/sum(n))
+
+ggplot(pattern_count, aes(x = pattern, y=count, fill=imprint)) + geom_bar(stat="identity",position = position_dodge()) + theme_bw() +theme(axis.text.x = element_text(angle = 90)) + scale_fill_manual(values = c( "maroon", "navy"))
+
+ggplot(pattern_freq, aes(x = pattern, y=Freq, fill=imprint)) + geom_bar(stat="identity",position = position_dodge()) + theme_bw() +theme(axis.text.x = element_text(angle = 90)) + scale_fill_manual(values = c( "maroon", "navy"))
+
+#Lets see if any pattern is associated with endosperm preference
+W22_imprints <- subset(patterns_imprinting2, grepl("Zm00004b", patterns_imprinting2$feature))
+W22_pattern_count <- W22_imprints %>% group_by(imprint, pattern) %>% dplyr::summarize(count = n())
+ggplot(W22_pattern_count, aes(x = pattern, y=count, fill=imprint)) + geom_bar(stat="identity",position = position_dodge()) + theme_bw() +theme(axis.text.x = element_text(angle = 90)) + scale_fill_manual(values = c( "maroon", "navy"))
+
+W22_atlas <- read.table("//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/mdr1/W22_endo_pref_call.txt")
+W22_atlas$feature <- rownames(W22_atlas)
+
+W22_imprints_pref <- left_join(W22_imprints, W22_atlas, by= "feature")
+
+W22_pattern_count <- W22_imprints_pref %>% group_by(preference,imprint, pattern) %>% dplyr::summarize(count = n())
+ggplot(W22_pattern_count, aes(x = pattern, y=count, fill=imprint)) + geom_bar(stat="identity",position = position_dodge()) + theme_bw() +theme(axis.text.x = element_text(angle = 90)) + scale_fill_manual(values = c( "maroon", "navy")) + facet_wrap(.~preference)
+#Not much of a difference,  I don't believe there is a connection between pattern and tissue
+
+#Examples of different patterns
+    #First paternal allele goes up 
+my_gene("Zm00004b020603")
+    #Next, paternal allele never on
+my_gene("Zm00001eb359000")
+    # paternal allele goes down
+my_gene("Zm00001eb265890")
+    #maternal goes up
+my_gene("Zm00004b030050")
+    #maternal allele never on 
+my_gene("Zm00001eb407830")
+    #maternal allele goes down (had highest values for PEGs)
+my_gene("Zm00001eb323510")
+
+#Looking for an outlier
+my_gene("Zm00004b027397") #This turns out to be a pyrophosphatase 
+
+
+#Which pattern do consistent imprints belong to generally?
+    #Add column to Imprinting_all df specifying consistency
+Imprints_all$consistency <- ifelse(Imprints_all$imprint.11 == Imprints_all$imprint.14 & Imprints_all$imprint.14 == Imprints_all$imprint.17 & Imprints_all$imprint.17 == Imprints_all$imprint.21,"consistent", "transient")
+
+patterns_imp_plusconsistency <- left_join(patterns_imprinting2, Imprints_all[,c(1,7)], by ="feature")
+
+pattern_count <- patterns_imp_plusconsistency %>% group_by(consistency,imprint, pattern) %>% dplyr::summarize(count = n())
+pattern_freq <-  patterns_imp_plusconsistency %>% group_by(imprint, consistency,pattern) %>% summarise(n=n()) %>% mutate(Freq=n/sum(n))
+
+ggplot(pattern_count, aes(x = pattern, y=count, fill=imprint)) + geom_bar(stat="identity",position = position_dodge()) + theme_bw() +theme(axis.text.x = element_text(angle = 90)) + scale_fill_manual(values = c( "maroon", "navy")) + facet_wrap(.~consistency)
+
+ggplot(pattern_freq, aes(x = pattern, y=Freq, fill=consistency)) + geom_bar(stat="identity",position = position_dodge()) + theme_bw() +theme(axis.text.x = element_text(angle = 90)) + scale_fill_manual(values = c( "sienna2", "slateblue4"))
+
+#variance
+pattern.variance <- aov(pattern ~ consistency, data = pattern_count)
+
+
+#Before running this next line syntplot.Rmd needs to have run to create the function and files needed. 
+
+#Examples of different patterns across lines
+    #First paternal allele goes up 
+syntplot_Function("Zm00004b020603")
+    #Next, paternal allele never on
+syntplot_Function("Zm00001eb359000")
+    # paternal allele goes down
+syntplot_Function("Zm00001eb265890")
+    #maternal goes up
+syntplot_Function("Zm00004b030050")
+    #maternal allele never on 
+syntplot_Function("Zm00001eb407830")
+    #maternal allele goes down (had highest values for PEGs)
+syntplot_Function("Zm00001eb323510")
+
+#Looking for an outlier
+syntplot_Function("Zm00004b027397") #This turns out to be a pyrophosphatase 
+
+maternal_down <- subset(patterns_imprinting2$feature, patterns_imprinting2$pattern == "maternal allele goes down")
+
+peg1 <- NAM_tally(maternal_down, "maternal allele goes down")
+
+maternal_off <- subset(patterns_imprinting2$feature, patterns_imprinting2$pattern == "maternal allele never on")
+
+peg2 <- NAM_tally(maternal_off,"maternal allele never on")
+
+maternal_up <- subset(patterns_imprinting2$feature, patterns_imprinting2$pattern == "maternal allele goes up")
+
+peg3 <- NAM_tally(maternal_up,"maternal allele goes up")
+
+paternal_down <- subset(patterns_imprinting2$feature, patterns_imprinting2$pattern == "paternal allele goes down")
+
+meg1 <- NAM_tally(paternal_down, "paternal allele goes down")
+
+paternal_off <- subset(patterns_imprinting2$feature, patterns_imprinting2$pattern == "paternal allele never on")
+
+meg2 <- NAM_tally(paternal_off, "paternal allele never on")
+
+paternal_up <- subset(patterns_imprinting2$feature, patterns_imprinting2$pattern == "paternal allele goes up")
+
+meg3 <- NAM_tally(paternal_up, "paternal allele goes up")
+
+grid.arrange(peg1,peg2,peg3,meg1,meg2,meg3,nrow=3)
+
+```
+
+```{r}
+#separate MEGs and PEGs by genome they belong to
+
+B73_imprints <- subset(patterns_imprinting2, grepl("Zm00001eb", patterns_imprinting2$feature))
+W22_imprints <- subset(patterns_imprinting2, grepl("Zm00004b", patterns_imprinting2$feature))
+
+table(B73_imprints$imprint, B73_imprints$pattern)
+table(W22_imprints$imprint, W22_imprints$pattern)
+
+W22maternal_down <- subset(W22_imprints$feature, W22_imprints$pattern == "maternal allele goes down")
+W22maternal_off <- subset(W22_imprints$feature, W22_imprints$pattern == "maternal allele never on")
+W22maternal_up <- subset(W22_imprints$feature, W22_imprints$pattern == "maternal allele goes up")
+W22paternal_down <- subset(W22_imprints$feature, W22_imprints$pattern == "paternal allele goes down")
+W22paternal_off <- subset(W22_imprints$feature, W22_imprints$pattern == "paternal allele never on")
+W22paternal_up <- subset(W22_imprints$feature, W22_imprints$pattern == "paternal allele goes up")
+
+B73maternal_down <- subset(B73_imprints$feature, B73_imprints$pattern == "maternal allele goes down")
+B73maternal_off <- subset(B73_imprints$feature, B73_imprints$pattern == "maternal allele never on")
+B73maternal_up <- subset(B73_imprints$feature, B73_imprints$pattern == "maternal allele goes up")
+B73paternal_down <- subset(B73_imprints$feature, B73_imprints$pattern == "paternal allele goes down")
+B73paternal_off <- subset(B73_imprints$feature, B73_imprints$pattern == "paternal allele never on")
+B73paternal_up <- subset(B73_imprints$feature, B73_imprints$pattern == "paternal allele goes up")
+
+#Go term enrichment analysis
+#load packages
+library(topGO)
+library(tidyverse)
+library(scales)
+
+fname = '//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/B73_GO.out'
+go <-
+  read.table(
+    fname,
+    quote = '"',
+    sep = "\t",
+    header = TRUE,
+    colClasses = c('goid' = 'character', 'qpid' = 'character')
+  )
+# some filtering
+go_filt <- go[(go$ARGOT_PPV > 0.5), ]
+
+go_filt$goid <- paste0('GO:', go_filt$goid)
+
+panzer_to_golist <- function(panzer_df){
+  go_df <- aggregate( goid ~ qpid, data=panzer_df, FUN=c)
+  structure(go_df$goid, .Names=go_df$qpid)
+}
+all_golist <- panzer_to_golist(go_filt)
+
+gene_list <- as.data.frame(rownames(counts_kmeans))
+
+gene_list <- colnames("genenames")
+
+#Create individual gene lists for the clusters
+up14 <- as.data.frame(rownames(up_14))
+colnames(up14) <- "genenames"
+up14 <- up14 %>% mutate(myInput = "yes")
+write.table(up14[,c(1)], "//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/up14.txt")
+
+up17 <- as.data.frame(rownames(up_17))
+colnames(up17) <- "genenames"
+up17 <- up17 %>% mutate(myInput = "yes")
+write.table(up17[,c(1)], "//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/up17.txt")
+
+up21 <- as.data.frame(rownames(up_21))
+colnames(up21) <- "genenames"
+up21 <- up21 %>% mutate(myInput = "yes")
+write.table(up21[,c(1)], "//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/up21.txt")
+
+
+down14 <- as.data.frame(rownames(down_14))
+colnames(down14) <- "genenames"
+down14 <- down14 %>% mutate(myInput = "yes")
+write.table(down14[,c(1)], "//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/down14.txt")
+
+down17 <- as.data.frame(rownames(down_17))
+colnames(down17) <- "genenames"
+down17 <- down17 %>% mutate(myInput = "yes")
+write.table(down17[,c(1)], "//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/down17.txt")
+
+down21 <- as.data.frame(rownames(down_21))
+colnames(down21) <- "genenames"
+down21 <- down21 %>% mutate(myInput = "yes")
+write.table(down21[,c(1)], "//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/down21.txt")
+
+
+#Get all genes from annotation list
+gene_names <- names(all_golist)
+gene_names2 <- substr(gene_names,1,15)
+myGenes <- as.data.frame(gene_names2)
+colnames(myGenes) <- "genenames"
+
+#Get dfs ready
+myGenes_1 <- left_join(myGenes,up14)
+  myGenes_1$myInput <- myGenes_1$myInput %>%
+  replace_na('no')
+  up14_GO <- factor(as.integer(myGenes_1$myInput == 'yes'))
+  names(up14_GO) <- gene_names
+
+myGenes_2 <- left_join(myGenes,up17)
+  myGenes_2$myInput <- myGenes_2$myInput %>%
+  replace_na('no')
+  up17_GO <- factor(as.integer(myGenes_2$myInput == 'yes'))
+  names(up17_GO) <- gene_names
+  
+myGenes_3 <- left_join(myGenes,up21)
+  myGenes_3$myInput <- myGenes_3$myInput %>%
+  replace_na('no')
+  up21_GO <- factor(as.integer(myGenes_3$myInput == 'yes'))
+  names(up21_GO) <- gene_names
+
+myGenes_4 <- left_join(myGenes,down14)
+  myGenes_4$myInput <- myGenes_4$myInput %>%
+  replace_na('no')
+  down14_GO <- factor(as.integer(myGenes_4$myInput == 'yes'))
+  names(down14_GO) <- gene_names
+  
+myGenes_5 <- left_join(myGenes,down17)
+  myGenes_5$myInput <- myGenes_5$myInput %>%
+  replace_na('no')
+  down17_GO <- factor(as.integer(myGenes_5$myInput == 'yes'))
+  names(down17_GO) <- gene_names
+
+myGenes_6 <- left_join(myGenes,down21)
+  myGenes_6$myInput <- myGenes_6$myInput %>%
+  replace_na('no')
+  down21_GO <- factor(as.integer(myGenes_6$myInput == 'yes'))
+  names(down21_GO) <- gene_names
+
+
+#Set up GO enrichment analysis 
+run_topGO <- function(gene_list, ontology, gene2GO_list){
+  topGO_out <- new("topGOdata", ontology = ontology, allGenes = gene_list,
+                    annot = annFUN.gene2GO, gene2GO = gene2GO_list)
+  topGO_out
+  fishers_result <- runTest(topGO_out, algorithm = "elim", statistic = "fisher")
+  fishers_table <- GenTable(topGO_out, Fishers = fishers_result, useLevels = TRUE)
+  fishers_table$Ontology <- ontology
+  fishers_table$Fishers <- as.numeric(fishers_table$Fishers)
+  fishers_table
+}
+
+
+#Run TopGO on all ontology terms and clusters 
+up14_BP <- run_topGO(up14_GO, "BP", all_golist)
+up14_MF <- run_topGO(up14_GO, "MF", all_golist)
+up14_CC <- run_topGO(up14_GO, "CC", all_golist)
+up14GO <- (rbind(up14_BP, up14_MF, up14_CC))
+up14GO <- up14GO[order(up14GO$Fishers),]
+
+
+up17_BP <- run_topGO(up17_GO, "BP", all_golist)
+up17_MF <- run_topGO(up17_GO, "MF", all_golist)
+up17_CC <- run_topGO(up17_GO, "CC", all_golist)
+up17GO <- (rbind(up17_BP, up17_MF, up17_CC))
+up17GO <- up17GO[order(up17GO$Fishers),]
+
+up21_BP <- run_topGO(up21_GO, "BP", all_golist)
+up21_MF <- run_topGO(up21_GO, "MF", all_golist)
+up21_CC <- run_topGO(up21_GO, "CC", all_golist)
+up21GO <- (rbind(up21_BP, up21_MF, up21_CC))
+up21GO <- up21GO[order(up21GO$Fishers),]
+
+down14_BP <- run_topGO(down14_GO, "BP", all_golist)
+down14_MF <- run_topGO(down14_GO, "MF", all_golist)
+down14_CC <- run_topGO(down14_GO, "CC", all_golist)
+down14GO <- (rbind(down14_BP, down14_MF, down14_CC))
+down14GO <- down14GO[order(down14GO$Fishers),]
+
+down17_BP <- run_topGO(down17_GO, "BP", all_golist)
+down17_MF <- run_topGO(down17_GO, "MF", all_golist)
+down17_CC <- run_topGO(down17_GO, "CC", all_golist)
+down17GO <- (rbind(down17_BP, down17_MF, down17_CC))
+down17GO <- down17GO[order(down17GO$Fishers),]
+
+down21_BP <- run_topGO(down21_GO, "BP", all_golist)
+down21_MF <- run_topGO(down21_GO, "MF", all_golist)
+down21_CC <- run_topGO(down21_GO, "CC", all_golist)
+down21GO <- (rbind(down21_BP, down21_MF, down21_CC))
+down21GO <- down21GO[order(down21GO$Fishers),]
+
+
+#Make function to create bar plots of enriched terms
+myBarPlot <- function(table , term ) {
+  table <- table %>% mutate(word = case_when(Significant == 1 ~ "hit",
+                                             TRUE ~ "hits"))
+  ggplot(table, aes(reorder(Term, -log10(Fishers)),
+                    -log10(Fishers), fill = Ontology)) +
+    geom_bar(stat = 'identity') +
+    scale_fill_manual(values = c(
+      "BP" = "#9531b8",
+      "MF" = "#9dd745",
+      "CC" = "#da4218"
+    )) +
+    geom_text(aes(label = paste(Significant, word, "of", Annotated)),
+              hjust = 1.2,
+              color = "white") +
+    theme_classic(base_size = 14) +
+    ylab("- log10 p-value") +
+    xlab("") +
+    labs(title = paste0('GO Analysis (', term, ")")) +
+    scale_y_continuous(expand = expansion(mult = c(0, .1)),
+                       breaks = scales::pretty_breaks()) +
+    theme(legend.position = "none") +
+    coord_flip()
+}
+
+up14_plot <- myBarPlot(table = up14GO, term = "Upregulated at 14DAP")
+up17_plot <- myBarPlot(table = up17GO, term = "Upregulated at 17DAP")
+up21_plot <- myBarPlot(table = up21GO, term = "Upregulated at 21DAP")
+down14_plot <- myBarPlot(table = down14GO, term = "Downregulated at 14DAP")
+down17_plot <- myBarPlot(table = down17GO, term = "Downregulated at 17DAP")
+down21_plot <- myBarPlot(table = down21GO, term = "Downregulated at 21DAP")
+
+
+up14_plot
+up17_plot
+up21_plot
+down14_plot
+down17_plot
+down21_plot
+
+#Check for common terms
+tmp <- bind_rows(up14GO,up17GO,up21GO,down14GO,down17GO,down21GO, .id = "Direction")
+tmp$Direction <- ifelse(tmp$Direction == 1|tmp$Direction == 2|tmp$Direction == 3,"up","down")
+tmp2 <- tmp %>% group_by(Direction,Term) %>% summarize(count = n())
+```
 

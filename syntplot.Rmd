@@ -2,7 +2,7 @@
 title: "R Notebook"
 output: html_notebook
 ---
-
+"\\las-dfs-01.las.iastate.edu\lss\research\sna-lab\kmh\projects\NAM\mat_pref_NAM.txt"
 This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
 
 Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
@@ -11,7 +11,7 @@ Try executing this chunk by clicking the *Run* button within the chunk or by pla
 library(data.table)
 library(dplyr)
 library(ggplot2)
-all_mat_pref <- read.table("//las-B73_dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/NAM/mat_pref_NAM.txt", )
+all_mat_pref <- read.table("//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/NAM/mat_pref_NAM.txt")
 colnames(all_mat_pref) <- all_mat_pref[c(1),]
 all_mat_pref2 <- all_mat_pref[-c(1),]
 
@@ -23,10 +23,10 @@ all_mat_pref2$maternal_preference <- as.numeric(all_mat_pref2$maternal_preferenc
 ```
 
 ```{r}
-zein_synt <- read.table("//las-B73_dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/data/new_NAM.tsv")
+zein_synt <- read.table("//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/data/new_NAM.tsv")
 #colnames(zein_synt) <- zein_synt[c(1),]
 #zein_synt2 <- zein_synt[-c(1),]
-#zein<- read.table("//las-B73_dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/data/zein_gene_key_listed.txt")
+#zein<- read.table("//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/data/zein_gene_key_listed.txt")
 #zein_mat_pref <- subset(all_mat_pref2, all_mat_pref2$feature %in% zein$V1)
 names(zein_synt) <- c("B97","B73","Oh43","Mo17","W22","PH207","P39","NC358","Ky21","CML333","M162W","M37W","Ki11")
 
@@ -40,7 +40,7 @@ B73_df$value<- NULL
 B73_df2 <- right_join(B73_df, all_mat_pref, by = "feature")
 B73_df2 <- B73_df2[-c(212843),]
 #Create new B73 name column to ensure we have all maternal values listed
-B73_df2$B73_2 <-ifelse(is.na(B73_df2$B73) & grepl("Zm00001", B73_df2$feature),paste(B73_df2$feature), paste(B73_df2$B73))
+B73_df2$feature_2 <-ifelse(is.na(B73_df2$B73) & grepl("Zm00001", B73_df2$feature),paste(B73_df2$feature), paste(B73_df2$B73))
 #Remove columns we no longer need
 B73_df2[,c(1:2)] <- NULL
 
@@ -53,7 +53,7 @@ B73_df2$maternal_preference <- as.numeric(B73_df2$maternal_preference)
 B73_df3 <- subset(B73_df2, rowSums(B73_df2[c("A_mean","B_mean")]) > 2)
 
 #Remove rows that aren't associated with a B73 gene
-B73_df4 <- subset(B73_df3, B73_df3$B73_2 != 'NA')
+B73_df4 <- subset(B73_df3, B73_df3$feature_2 != 'NA')
 
 #Create contrast_genome column
 B73_df4$cont_genome <- paste(B73_df4$genome, "_", B73_df4$contrast)
@@ -62,7 +62,7 @@ B73_df4$cont_genome <- paste(B73_df4$genome, "_", B73_df4$contrast)
 B73_df4 <- B73_df4[order(substr(B73_df4$cont_genome, nchar(B73_df4$cont_genome) - 1, nchar(B73_df4$cont_genome))), ]
 
 syntplot <- B73_df4
-#write.table(B73_df4, file = "//las-B73_dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/NAM/all_zein_mat_pref_synts.txt",col.names = T,row.names = F,sep = "\t")
+#write.table(B73_df4, file = "//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/NAM/all_zein_mat_pref_synts.txt",col.names = T,row.names = F,sep = "\t")
 
 
 
@@ -79,7 +79,7 @@ B73_df$value<- NULL
 B73_df2 <- right_join(B73_df, all_mat_pref, by = "feature")
 B73_df2 <- B73_df2[-c(212843),]
 #Create new B73 name column to ensure we have all maternal values listed
-B73_df2$B73_2 <-ifelse(is.na(B73_df2$B73) & grepl("Zm00001", B73_df2$feature),paste(B73_df2$feature), paste(B73_df2$B73))
+B73_df2$feature_2 <-ifelse(is.na(B73_df2$B73) & grepl("Zm00001", B73_df2$feature),paste(B73_df2$feature), paste(B73_df2$B73))
 #Remove columns we no longer need
 B73_df2[,c(1:2)] <- NULL
 
@@ -92,30 +92,13 @@ B73_df2$maternal_preference <- as.numeric(B73_df2$maternal_preference)
 B73_df3 <- subset(B73_df2, rowSums(B73_df2[c("A_mean","B_mean")]) > 2)
 
 #Remove rows that aren't associated with a B73 gene
-B73_df4 <- subset(B73_df3, B73_df3$B73_2 != 'NA')
+B73_df4 <- subset(B73_df3, B73_df3$feature_2 != 'NA')
 
 #Create contrast_genome column
 B73_df4$cont_genome <- paste(B73_df4$genome, "_", B73_df4$contrast)
 
 #ORGANIZE THE DATAFRAME B73_df4 SO THAT THE STRING IN THE  cont_genome COLUMB IS IN ALPHABITICAL ORDER BASED STARTING FROM THE LAST TWO LETTERS
 B73_df4 <- B73_df4[order(substr(B73_df4$cont_genome, nchar(B73_df4$cont_genome) - 1, nchar(B73_df4$cont_genome))), ]
-
-syntplot <- B73_df4
-
-
-
-
-library(RColorBrewer)
-syntplot_Function<- function(gene){
-  data_SET <- subset(syntplot, syntplot$B73_2 == gene)
-  custom_order <- unique(syntplot$cont_genome)
-
-  ggplot(data_SET, aes(x = factor(cont_genome, levels = custom_order), y = maternal_preference, fill = expression)) + scale_fill_manual("Predicted expression",values = c("pos_MEG" = "maroon", "pos_PEG" = "navy", "biparental" = "darkgrey")) + geom_bar(position =position_dodge(preserve = "single"), stat = "identity")+ theme(axis.text.x = element_text( angle= 45, hjust=1), text = element_text(size=10)) + ggtitle(gene) + ylim(0,1) + geom_hline(yintercept = .66, color = "purple4") + xlab("Maternal allele-Contrast") + geom_hline(yintercept = .85, color = "green") + geom_hline(yintercept = .3, color = "blue") 
-}
-
-syntplot_Function("Zm00001eb040700")
-
-lapply(B73_mat_only, syntplot_Function)
 ```
 
 
@@ -131,7 +114,7 @@ W22_df$value<- NULL
 W22_df2 <- right_join(W22_df, all_mat_pref, by = "feature")
 W22_df2 <- W22_df2[-c(212843),]
 #Create new W22 name column to ensure we have all maternal values listed
-W22_df2$W22_2 <-ifelse(is.na(W22_df2$W22) & grepl("Zm00004", W22_df2$feature),paste(W22_df2$feature), paste(W22_df2$W22))
+W22_df2$feature_2 <-ifelse(is.na(W22_df2$W22) & grepl("Zm00004", W22_df2$feature),paste(W22_df2$feature), paste(W22_df2$W22))
 #Remove columns we no longer need
 W22_df2[,c(1:2)] <- NULL
 
@@ -144,7 +127,7 @@ W22_df2$maternal_preference <- as.numeric(W22_df2$maternal_preference)
 W22_df3 <- subset(W22_df2, rowSums(W22_df2[c("A_mean","B_mean")]) > 2)
 
 #Remove rows that aren't associated with a W22 gene
-W22_df4 <- subset(W22_df3, W22_df3$W22_2 != 'NA')
+W22_df4 <- subset(W22_df3, W22_df3$feature_2 != 'NA')
 
 #Create contrast_genome column
 W22_df4$cont_genome <- paste(W22_df4$genome, "_", W22_df4$contrast)
@@ -154,20 +137,47 @@ W22_df4 <- W22_df4[order(substr(W22_df4$cont_genome, nchar(W22_df4$cont_genome) 
 
 syntplot <- W22_df4
 
-
-
-
 library(RColorBrewer)
 syntplot_Function<- function(gene){
-  data_SET <- subset(syntplot, syntplot$W22_2 == gene)
-  custom_order <- unique(syntplot$cont_genome)
+  data_SET1 <- subset(B73_df4, B73_df4$feature_2 == gene)
+  data_SET2 <- subset(syntplot, syntplot$feature_2 == gene)
+  data_SET3 <- rbind(data_SET1,data_SET2)
+  custom_order <- unique(B73_df4$cont_genome)
 
-  ggplot(data_SET, aes(x = factor(cont_genome, levels = custom_order), y = maternal_preference, fill = expression)) + scale_fill_manual("Predicted expression",values = c("pos_MEG" = "maroon", "pos_PEG" = "navy", "biparental" = "darkgrey")) + geom_bar(position =position_dodge(preserve = "single"), stat = "identity")+ theme(axis.text.x = element_text( angle= 45, hjust=1), text = element_text(size=10)) + ggtitle(gene) + ylim(0,1) + geom_hline(yintercept = .66, color = "purple4") + xlab("Maternal allele-Contrast") + geom_hline(yintercept = .85, color = "green") + geom_hline(yintercept = .3, color = "blue") 
+  ggplot(data_SET3, aes(x = factor(cont_genome, levels = custom_order), y = maternal_preference, fill = expression)) + scale_fill_manual("Predicted expression",values = c("pos_MEG" = "maroon", "pos_PEG" = "navy", "biparental" = "darkgrey")) + geom_bar(position =position_dodge(preserve = "single"), stat = "identity")+ theme(axis.text.x = element_text( angle= 45, hjust=1), text = element_text(size=10)) + ggtitle(gene) + ylim(0,1) + geom_hline(yintercept = .66, color = "purple4") + xlab("Maternal allele-Contrast") + geom_hline(yintercept = .8, color = "green") + geom_hline(yintercept = .3, color = "blue") + theme_bw() +theme(axis.text.x = element_text(angle = 90)) + theme(legend.position = "none")  
+}
+#syntplot_Function("Zm00001eb040700")
+
+#lapply(B73_mat_only, syntplot_Function)
+
+#lapply(W22_mat_only, syntplot_Function)
+
+#Create function to tally predicted expression based across NAM syntelogs for all genes in a list
+NAM_tally <- function(list,title){
+  data_SET1 <- subset(B73_df4[,c(1,8,9)], B73_df4$feature_2 %in% list)
+  data_SET2 <- subset(syntplot[,c(1,8,9)], syntplot$feature_2 %in% list)
+  data_SET3 <- rbind(data_SET1, data_SET2)
+  data_SET4 <- unique(data_SET3)
+  tmp <- data_SET4 %>% group_by(feature_2, expression) %>% tally 
+  tmp2 <- data_SET4 %>% group_by(feature_2) %>% tally 
+  tmp3 <- full_join(tmp, tmp2,by="feature_2")
+  
+  a<-ggplot(tmp,aes(x = n,fill=expression)) +
+  geom_density(alpha = 0.6, color = NA) +
+  labs(x = "Total number found in NAM crosses", y= "Density") + ggtitle(title) + scale_fill_manual("Predicted expression",values = c("pos_MEG" = "maroon", "pos_PEG" = "navy", "biparental" = "darkgrey")) + theme_bw() + scale_x_continuous(limits=c(0,12))+theme(legend.position="none")
+  
+  tmp3$percent_found_syntelogs_this_gene <- 100*(tmp3$n.x/tmp3$n.y)
+  tmp3
+  
+  tmp4 <- tmp3 %>% group_by(expression,percent_found_syntelogs_this_gene) %>% tally
+  b<-ggplot(tmp4) +
+  geom_jitter(aes(x = n, y= percent_found_syntelogs_this_gene,color=expression)) + geom_smooth(aes(x = n, y= percent_found_syntelogs_this_gene,color=expression), method=lm, se=FALSE) + labs(x = "Total number found in NAM crosses", y= "Percent by gene") + ggtitle(title) + scale_color_manual("Predicted expression",values = c("pos_MEG" = "maroon", "pos_PEG" = "navy", "biparental" = "darkgrey")) + theme_bw() + scale_x_continuous(limits=c(0,12)) +theme(legend.position="none")
+  grid.arrange(a,b,nrow=1)
 }
 
-
-lapply(W22_mat_only, syntplot_Function)
 ```
+
+
 ```{r}
 BW <- zein_synt[,c(2,5)]
 
