@@ -24,19 +24,15 @@ library(dplyr)
 library(data.table)
 ```
 
-Read in count table
+Read in count table for B73xW22 samples mapped to B73 (also do this for W22xB73 if you'd like to get them ready for kmeans analysis)
 
 ```{r}
-counts_kmeans <- read.table("//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/combined_kmeans_counts.txt",header=T,stringsAsFactors = F)
-
-#Get rid of unnecessary columns 
-counts_kmeans2 <- subset(counts_kmeans, grepl("B73",counts_kmeans$ID))
-
+counts_kmeans <- read.table("//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/combined_counts_B73mat_toB73.txt",header=T,stringsAsFactors = F)
 
 #Normalize counts_kmeans into reads per million
-counts_kmeans.rpm <- counts_kmeans2
+counts_kmeans.rpm <- counts_kmeans
 for(i in 2:13){
-  counts_kmeans.rpm[,i] <- (counts_kmeans2[,i]/sum(counts_kmeans2[,i])) * 1e6
+  counts_kmeans.rpm[,i] <- (counts_kmeans[,i]/sum(counts_kmeans[,i])) * 1e6
 }
 
 #setDT(counts_kmeans)
@@ -45,11 +41,11 @@ for(i in 2:13){
   counts_kmeans.rpm2[,i] <- log2(counts_kmeans.rpm2[,i] + 1)
 }
 
-rownames(counts_kmeans.rpm) <- counts_kmeans.rpm$ID
-counts_kmeans.rpm$ID <- NULL 
+rownames(counts_kmeans.rpm) <- counts_kmeans.rpm$Geneid
+counts_kmeans.rpm$Geneid <- NULL 
 counts_kmeans.rpm3 <- as.matrix(counts_kmeans.rpm)
 
-counts_kmeans.keep <- subset(counts_kmeans.rpm,rowMeans(counts_kmeans.rpm[,1:3]) >= 0.5 | rowMeans(counts_kmeans.rpm[,4:6]) >= 0.5| rowMeans(counts_kmeans.rpm[,7:9]) >= 0.5 | rowMeans(counts_kmeans.rpm[,10:12] >= 0.5))
+counts_kmeans.keep <- subset(counts_kmeans.rpm3,rowMeans(counts_kmeans.rpm3[,1:3]) >= 0.5 | rowMeans(counts_kmeans.rpm3[,4:6]) >= 0.5| rowMeans(counts_kmeans.rpm3[,7:9]) >= 0.5 | rowMeans(counts_kmeans.rpm3[,10:12] >= 0.5))
 
 counts_kmeans_keep2 <- as.matrix(counts_kmeans.keep)
 
@@ -58,9 +54,305 @@ counts_kmeans.rpm4 <- (counts_kmeans_keep2/(rowMaxs(counts_kmeans_keep2, na.rm =
 
 #Figure out how to convert to table and get table/Rowmaxs(table)
 
-write.table(counts_kmeans.rpm, "//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/kmeans_rpm_table.txt", row.names = T, col.names = T, quote = F)
-write.table(counts_kmeans.rpm2, "//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/kmeans_log2rpm_table.txt", row.names = T, col.names = T, quote = F)
+#write.table(counts_kmeans.rpm, "//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/kmeans_rpm_table_B73.txt", row.names = T, col.names = T, quote = F)
+#write.table(counts_kmeans.rpm2, "//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/kmeans_log2rpm_table_B73.txt", row.names = T, col.names = T, quote = F)
 
-write.table(counts_kmeans.rpm4, "//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/kmeans_rownormalized_zero_to_one.txt", row.names = T, col.names = T, quote = F)
+#write.table(counts_kmeans.rpm4, "//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/kmeans_rownormalized_zero_to_one_B73.txt", row.names = T, col.names = T, quote = F)
 
 ```
+
+```{r}
+#Create DESeq objects based solely on timepoint without influence of genotype
+#Get rpm in non matrix format
+rownames(counts_kmeans) <- counts_kmeans$Geneid
+counts_kmeans$Geneid <- NULL
+counts_kmeans <- subset(counts_kmeans, rowSums(counts_kmeans.rpm) >= 10) 
+
+#Set sample information for DE calculation
+sample.info <- as.data.frame(cbind(paste(colnames(counts_kmeans.keep)), c("B73mat_11", "B73mat_11", "B73mat_11", "B73mat_14", "B73mat_14", "B73mat_14", "B73mat_17", "B73mat_17", "B73mat_17", "B73mat_21", "B73mat_21", "B73mat_21")))
+rownames(sample.info) <- sample.info[,1]
+sample_list <- sample.info[,2]
+names(sample.info) <- c("sample.info","sample_list")
+
+write.table(sample.info, file = "//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/sample.info_B73.txt", col.names = T, row.names = F, quote = F)
+
+counts_kmeans[is.na(counts_kmeans)] <- 0
+#Run DESeq
+dds <- DESeqDataSetFromMatrix(countData = counts_kmeans, colData = sample.info, design = ~ sample_list)
+dds2 <- DESeq(dds)
+keep <- rowSums(counts(dds2)) > 1
+dds2 <- dds2[keep,]
+
+plotDispEsts(dds2)
+#Get names of different tests performed
+resultsNames(dds2)
+#make results tables
+B73mat_res17v11 <- results(dds2, name = "sample_list_B73mat_17_vs_B73mat_11", alpha = .001 )
+B73mat_res14v11 <- results(dds2, name = "sample_list_B73mat_14_vs_B73mat_11", alpha = .001 )
+B73mat_res21v11 <- results(dds2, name = "sample_list_B73mat_21_vs_B73mat_11", alpha = .001 )
+
+#Coerce results to dataframes
+B73mat_out_17v11<- data.frame(B73mat_res17v11)
+B73mat_out_14v11<- data.frame(B73mat_res14v11)
+B73mat_out_21v11<- data.frame(B73mat_res21v11)
+
+rld <- rlog(dds2, blind=FALSE)
+colData(rld)
+PCA_time <- plotPCA(rld,intgroup="sample_list", ntop = 10000) + theme_classic() 
+PCA_time
+
+#write.table(counts.rpm.3, file = "//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/timepoint.rpm.txt")
+
+#Make Differential expression calls based on adjusted p-value and fold change
+B73mat_out_14v11$Diff_Exp <- ifelse(B73mat_out_14v11$padj < .05 & B73mat_out_14v11$log2FoldChange > 1, "up", ifelse(B73mat_out_14v11$padj < .05 & B73mat_out_14v11$log2FoldChange < -1, "down", "notDE"))
+B73mat_out_17v11$Diff_Exp <- ifelse(B73mat_out_17v11$padj < .05 & B73mat_out_17v11$log2FoldChange > 1, "up", ifelse(B73mat_out_17v11$padj < .05 & B73mat_out_17v11$log2FoldChange < -1, "down", "notDE"))
+B73mat_out_21v11$Diff_Exp <- ifelse(B73mat_out_21v11$padj < .05 & B73mat_out_21v11$log2FoldChange > 1, "up", ifelse(B73mat_out_21v11$padj < .05 & B73mat_out_21v11$log2FoldChange < -1, "down", "notDE"))
+B73mat_out_14v11$ID <- row.names(B73mat_out_14v11)
+B73mat_out_17v11$ID <- row.names(B73mat_out_17v11)
+B73mat_out_21v11$ID <- row.names(B73mat_out_21v11)
+```
+
+```{r} 
+#Plot barchart of total counts DE at each timepoint
+summary.14v11 <- data.frame(B73mat_out_14v11 %>% group_by(Diff_Exp) %>% summarize(count = n()))
+summary.17v11 <- data.frame(B73mat_out_17v11 %>% group_by(Diff_Exp) %>% summarize(count = n()))
+summary.21v11 <- data.frame(B73mat_out_21v11 %>% group_by(Diff_Exp) %>% summarize(count = n()))
+
+summary.combined <- bind_rows(summary.14v11,summary.17v11,summary.21v11, .id = "Contrast")
+summary.combined$Contrast <- ifelse(summary.combined$Contrast == 1, "14DAP v 11DAP", ifelse(summary.combined$Contrast == 2, "17DAP v 11DAP", "21DAP v 11DAP"))
+
+summary.combined2 <- subset(summary.combined,summary.combined$Diff_Exp %in% c("up","down"))
+summary.combined2[summary.combined2$Diff_Exp == "down","count"] <- -summary.combined2[summary.combined2$Diff_Exp == "down","count"]
+
+ggplot() + geom_bar(aes(x=Contrast,y=count,fill=Diff_Exp),data=summary.combined2,stat="identity",position = "identity") + theme_classic()  +  theme(axis.text.x = element_text(angle=90, hjust=1)) + scale_fill_manual(values=c("navy","maroon")) 
+
+#How many of these are consistently up or down regulated?
+library(ggVennDiagram)
+#Subset Imprinting dfs so they are MEG or PEG
+up_14 <- subset(B73mat_out_14v11, B73mat_out_14v11$Diff_Exp == "up")
+up_17 <- subset(B73mat_out_17v11, B73mat_out_17v11$Diff_Exp == "up")
+up_21 <- subset(B73mat_out_21v11, B73mat_out_21v11$Diff_Exp == "up")
+
+down_14 <- subset(B73mat_out_14v11, B73mat_out_14v11$Diff_Exp == "down")
+down_17 <- subset(B73mat_out_17v11, B73mat_out_17v11$Diff_Exp == "down")
+down_21 <- subset(B73mat_out_21v11, B73mat_out_21v11$Diff_Exp == "down")
+
+
+#Same thing, but look at ID type too
+up_intersection <- list(A = up_14$ID, B = up_17$ID, C = up_21$ID)
+down_intersection <- list(A = down_14$ID, B = down_17$ID, C = down_21$ID)
+ggVennDiagram(up_intersection) + scale_fill_gradient(low = "gold2", high = "firebrick") + ggtitle("upregulated genes")
+ggVennDiagram(down_intersection) + scale_fill_gradient(low = "aquamarine3", high = "navy") + ggtitle("downregulated genes")
+
+```
+
+```{r}
+#Go term enrichment analysis
+#load packages
+library(topGO)
+library(tidyverse)
+library(scales)
+
+fname = '//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/B73_GO.out'
+go <-
+  read.table(
+    fname,
+    quote = '"',
+    sep = "\t",
+    header = TRUE,
+    colClasses = c('goid' = 'character', 'qpid' = 'character')
+  )
+# some filtering
+go_filt <- go[(go$ARGOT_PPV > 0.5), ]
+
+go_filt$goid <- paste0('GO:', go_filt$goid)
+
+panzer_to_golist <- function(panzer_df){
+  go_df <- aggregate( goid ~ qpid, data=panzer_df, FUN=c)
+  structure(go_df$goid, .Names=go_df$qpid)
+}
+all_golist <- panzer_to_golist(go_filt)
+
+gene_list <- as.data.frame(rownames(counts_kmeans))
+
+gene_list <- colnames("genenames")
+
+#Create individual gene lists for the clusters
+up14 <- as.data.frame(rownames(up_14))
+colnames(up14) <- "genenames"
+up14 <- up14 %>% mutate(myInput = "yes")
+write.table(up14[,c(1)], "//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/up14.txt")
+
+up17 <- as.data.frame(rownames(up_17))
+colnames(up17) <- "genenames"
+up17 <- up17 %>% mutate(myInput = "yes")
+write.table(up17[,c(1)], "//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/up17.txt")
+
+up21 <- as.data.frame(rownames(up_21))
+colnames(up21) <- "genenames"
+up21 <- up21 %>% mutate(myInput = "yes")
+write.table(up21[,c(1)], "//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/up21.txt")
+
+
+down14 <- as.data.frame(rownames(down_14))
+colnames(down14) <- "genenames"
+down14 <- down14 %>% mutate(myInput = "yes")
+write.table(down14[,c(1)], "//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/down14.txt")
+
+down17 <- as.data.frame(rownames(down_17))
+colnames(down17) <- "genenames"
+down17 <- down17 %>% mutate(myInput = "yes")
+write.table(down17[,c(1)], "//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/down17.txt")
+
+down21 <- as.data.frame(rownames(down_21))
+colnames(down21) <- "genenames"
+down21 <- down21 %>% mutate(myInput = "yes")
+write.table(down21[,c(1)], "//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/timepoint/down21.txt")
+
+
+#Get all genes from annotation list
+gene_names <- names(all_golist)
+gene_names2 <- substr(gene_names,1,15)
+myGenes <- as.data.frame(gene_names2)
+colnames(myGenes) <- "genenames"
+
+#Get dfs ready
+myGenes_1 <- left_join(myGenes,up14)
+  myGenes_1$myInput <- myGenes_1$myInput %>%
+  replace_na('no')
+  up14_GO <- factor(as.integer(myGenes_1$myInput == 'yes'))
+  names(up14_GO) <- gene_names
+
+myGenes_2 <- left_join(myGenes,up17)
+  myGenes_2$myInput <- myGenes_2$myInput %>%
+  replace_na('no')
+  up17_GO <- factor(as.integer(myGenes_2$myInput == 'yes'))
+  names(up17_GO) <- gene_names
+  
+myGenes_3 <- left_join(myGenes,up21)
+  myGenes_3$myInput <- myGenes_3$myInput %>%
+  replace_na('no')
+  up21_GO <- factor(as.integer(myGenes_3$myInput == 'yes'))
+  names(up21_GO) <- gene_names
+
+myGenes_4 <- left_join(myGenes,down14)
+  myGenes_4$myInput <- myGenes_4$myInput %>%
+  replace_na('no')
+  down14_GO <- factor(as.integer(myGenes_4$myInput == 'yes'))
+  names(down14_GO) <- gene_names
+  
+myGenes_5 <- left_join(myGenes,down17)
+  myGenes_5$myInput <- myGenes_5$myInput %>%
+  replace_na('no')
+  down17_GO <- factor(as.integer(myGenes_5$myInput == 'yes'))
+  names(down17_GO) <- gene_names
+
+myGenes_6 <- left_join(myGenes,down21)
+  myGenes_6$myInput <- myGenes_6$myInput %>%
+  replace_na('no')
+  down21_GO <- factor(as.integer(myGenes_6$myInput == 'yes'))
+  names(down21_GO) <- gene_names
+
+
+#Set up GO enrichment analysis 
+run_topGO <- function(gene_list, ontology, gene2GO_list){
+  topGO_out <- new("topGOdata", ontology = ontology, allGenes = gene_list,
+                    annot = annFUN.gene2GO, gene2GO = gene2GO_list)
+  topGO_out
+  fishers_result <- runTest(topGO_out, algorithm = "elim", statistic = "fisher")
+  fishers_table <- GenTable(topGO_out, Fishers = fishers_result, useLevels = TRUE)
+  fishers_table$Ontology <- ontology
+  fishers_table$Fishers <- as.numeric(fishers_table$Fishers)
+  fishers_table
+}
+
+
+#Run TopGO on all ontology terms and clusters 
+up14_BP <- run_topGO(up14_GO, "BP", all_golist)
+up14_MF <- run_topGO(up14_GO, "MF", all_golist)
+up14_CC <- run_topGO(up14_GO, "CC", all_golist)
+up14GO <- (rbind(up14_BP, up14_MF, up14_CC))
+up14GO <- up14GO[order(up14GO$Fishers),]
+
+
+up17_BP <- run_topGO(up17_GO, "BP", all_golist)
+up17_MF <- run_topGO(up17_GO, "MF", all_golist)
+up17_CC <- run_topGO(up17_GO, "CC", all_golist)
+up17GO <- (rbind(up17_BP, up17_MF, up17_CC))
+up17GO <- up17GO[order(up17GO$Fishers),]
+
+up21_BP <- run_topGO(up21_GO, "BP", all_golist)
+up21_MF <- run_topGO(up21_GO, "MF", all_golist)
+up21_CC <- run_topGO(up21_GO, "CC", all_golist)
+up21GO <- (rbind(up21_BP, up21_MF, up21_CC))
+up21GO <- up21GO[order(up21GO$Fishers),]
+
+down14_BP <- run_topGO(down14_GO, "BP", all_golist)
+down14_MF <- run_topGO(down14_GO, "MF", all_golist)
+down14_CC <- run_topGO(down14_GO, "CC", all_golist)
+down14GO <- (rbind(down14_BP, down14_MF, down14_CC))
+down14GO <- down14GO[order(down14GO$Fishers),]
+
+down17_BP <- run_topGO(down17_GO, "BP", all_golist)
+down17_MF <- run_topGO(down17_GO, "MF", all_golist)
+down17_CC <- run_topGO(down17_GO, "CC", all_golist)
+down17GO <- (rbind(down17_BP, down17_MF, down17_CC))
+down17GO <- down17GO[order(down17GO$Fishers),]
+
+down21_BP <- run_topGO(down21_GO, "BP", all_golist)
+down21_MF <- run_topGO(down21_GO, "MF", all_golist)
+down21_CC <- run_topGO(down21_GO, "CC", all_golist)
+down21GO <- (rbind(down21_BP, down21_MF, down21_CC))
+down21GO <- down21GO[order(down21GO$Fishers),]
+
+
+#Make function to create bar plots of enriched terms
+myBarPlot <- function(table , term ) {
+  table <- table %>% mutate(word = case_when(Significant == 1 ~ "hit",
+                                             TRUE ~ "hits"))
+  ggplot(table, aes(reorder(Term, -log10(Fishers)),
+                    -log10(Fishers), fill = Ontology)) +
+    geom_bar(stat = 'identity') +
+    scale_fill_manual(values = c(
+      "BP" = "#9531b8",
+      "MF" = "#9dd745",
+      "CC" = "#da4218"
+    )) +
+    geom_text(aes(label = paste(Significant, word, "of", Annotated)),
+              hjust = 1.2,
+              color = "white") +
+    theme_classic(base_size = 14) +
+    ylab("- log10 p-value") +
+    xlab("") +
+    labs(title = paste0('GO Analysis (', term, ")")) +
+    scale_y_continuous(expand = expansion(mult = c(0, .1)),
+                       breaks = scales::pretty_breaks()) +
+    theme(legend.position = "none") +
+    coord_flip()
+}
+
+up14_plot <- myBarPlot(table = up14GO, term = "Upregulated at 14DAP")
+up17_plot <- myBarPlot(table = up17GO, term = "Upregulated at 17DAP")
+up21_plot <- myBarPlot(table = up21GO, term = "Upregulated at 21DAP")
+down14_plot <- myBarPlot(table = down14GO, term = "Downregulated at 14DAP")
+down17_plot <- myBarPlot(table = down17GO, term = "Downregulated at 17DAP")
+down21_plot <- myBarPlot(table = down21GO, term = "Downregulated at 21DAP")
+
+
+up14_plot
+up17_plot
+up21_plot
+down14_plot
+down17_plot
+down21_plot
+
+#Check for common terms
+tmp <- bind_rows(up14GO,up17GO,up21GO,down14GO,down17GO,down21GO, .id = "Direction")
+tmp$Direction <- ifelse(tmp$Direction == 1|tmp$Direction == 2|tmp$Direction == 3,"up","down")
+tmp2 <- tmp %>% group_by(Direction,Term) %>% summarize(count = n())
+```
+
+
+```
+
+
