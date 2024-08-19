@@ -28,67 +28,48 @@ B73 reference gene model cross-reference relative to v4
 Downloaded from MaizeGDB 2020/01/22, 11:32am
 Reformatted to remove header
 ```{r}
-gene.key <- read.table("//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/data/new_NAM.tsv",sep="\t",header=F,stringsAsFactors = F)
-
-
-
+gene.key <- read.table("//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/scripts/pangene_table_7geno_20Oct21.txt",sep="\t",header=F,stringsAsFactors = F)
+#dup.gene <- subset(gene.key,duplicated(gene.key$V2))
+#gene.key <- subset(gene.key,!gene.key$V2 %in% dup.gene$V2)
 
 ##Experimental 
-gene.key.BB.syntelogs <- subset(gene.key,nchar(gene.key$V1) < 20 & nchar(gene.key$V2) < 20 )[,c(1:13)]
-gene.key.BO.syntelogs <- subset(gene.key,nchar(gene.key$V3) < 20 & nchar(gene.key$V2) < 20 )[,c(1:13)]
-gene.key.BK.syntelogs <- subset(gene.key,nchar(gene.key$V13) < 20 & nchar(gene.key$V2) < 20 )[,c(1:13)]
-gene.key.BW.syntelogs <- subset(gene.key,nchar(gene.key$V5) < 20 & nchar(gene.key$V2) < 20 )[,c(1:13)]
-gene.key.MO.syntelogs <- subset(gene.key,nchar(gene.key$V4) < 20 & nchar(gene.key$V3) < 20 )[,c(1:13)]
-gene.key.MK.syntelogs <- subset(gene.key,nchar(gene.key$V13) < 20 & nchar(gene.key$V4) < 20 )[,c(1:13)]
-gene.key.MB.syntelogs <- subset(gene.key,nchar(gene.key$V4) < 20 & nchar(gene.key$V2) < 20)[,c(1:13)]
-gene.key.AB.syntelogs <- subset(gene.key,nchar(gene.key$V7) < 20 & nchar(gene.key$V2) < 20 )[,c(1:13)]
-gene.key.CB.syntelogs <- subset(gene.key,nchar(gene.key$V8) < 20 & nchar(gene.key$V2) < 20 )[,c(1:13)]
-gene.key.DB.syntelogs <- subset(gene.key,nchar(gene.key$V9) < 20 & nchar(gene.key$V2) < 20 )[,c(1:13)]
-gene.key.EB.syntelogs <- subset(gene.key,nchar(gene.key$V10) < 20 & nchar(gene.key$V2) < 20 )[,c(1:13)]
-gene.key.FB.syntelogs <- subset(gene.key,nchar(gene.key$V11) < 20 & nchar(gene.key$V2) < 20 )[,c(1:13)]
-gene.key.EB.syntelogs <- subset(gene.key,nchar(gene.key$V12) < 20 & nchar(gene.key$V2) < 20 )[,c(1:13)]
-
-
-gene.key.all <- subset(gene.key,nchar(gene.key$V1) < 20 & nchar(gene.key$V3) < 20 & nchar(gene.key$V2) < 20 & nchar(gene.key$V4) < 20 & nchar(gene.key$V5) < 20 & nchar(gene.key$V6) < 20 &nchar(gene.key$V7) < 20& nchar(gene.key$V8) < 20 & nchar(gene.key$V9) < 20 & nchar(gene.key$V10) < 20 & nchar(gene.key$V11) < 20 & nchar(gene.key$V12) < 20 & nchar(gene.key$V13) < 20)[c(1:13)]
-
-
-#gene.key.long_B73centric <- melt()
+gene.key.BB.syntelogs <- subset(gene.key,nchar(gene.key$V1) == 15 & nchar(gene.key$V2) == 15 )[,c(1:7)]
+gene.key.BO.syntelogs <- subset(gene.key,nchar(gene.key$V3) == 15 & nchar(gene.key$V2) == 15 )[,c(1:7)]
+gene.key.BK.syntelogs <- subset(gene.key,nchar(gene.key$V4) == 15 & nchar(gene.key$V2) == 15 )[,c(1:7)]
+gene.key.BW.syntelogs <- subset(gene.key,nchar(gene.key$V6) == 14 & nchar(gene.key$V2) == 15 )[,c(1:7)]
+gene.key.MO.syntelogs <- subset(gene.key,nchar(gene.key$V5) == 14 & nchar(gene.key$V3) == 15 )[,c(1:7)]
+gene.key.MK.syntelogs <- subset(gene.key,nchar(gene.key$V5) == 14 & nchar(gene.key$V4) == 15 )[,c(1:7)]
+gene.key.MB.syntelogs <- subset(gene.key,nchar(gene.key$V5) == 14 & nchar(gene.key$V2) == 15)[,c(1:7)]
+gene.key.all <- subset(gene.key,nchar(gene.key$V1) == 15 & nchar(gene.key$V3) == 15 & nchar(gene.key$V2) == 15 & nchar(gene.key$V4) == 15 & nchar(gene.key$V5) == 14 & nchar(gene.key$V6) == 14)[c(1:6)]
 
 ```
 
 Read in RER table and calculate RPM
 ```{r}
 imp.all <- read.table("//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/mRNA_2021/combined_NAM_gene_counts.txt",header=T,stringsAsFactors = F)
-imp.all.new <- read.table("//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/NAM/combined_NAM_counts_genes_Sep23.txt",header=T,stringsAsFactors = F)
-##Join the two dataframes
+#imp.all.TE <- read.table("//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/mRNA_2021/combined_NAM_TE_counts.txt",header=T,stringsAsFactors = F)
 
-imp.all2 <- full_join(imp.all,imp.all.new, by= 'ID')
-bad.data <- imp.all2[,c(grepl("PH207|M37W|Mo17|P39",colnames(imp.all2)))]
-imp.all2[,c(grepl("PH207|M37W|Mo17|P39",colnames(imp.all2)))] <- NULL
-
-#Get rid of the rows that are summary stats
-imp.all.tmp <- subset(imp.all2, grepl("Z|TE", imp.all2$ID))
-#Put back into imp.all2 after checking its 5 rows shorter
-imp.all2 <- imp.all.tmp
-#Remove imp.all.tmp
-imp.all.tmp <-NULL
-#Convert any NA values to zero before normalizing
-imp.all2[is.na(imp.all2)] <- 0
-
-imp.all.rpm <- imp.all2
-for(i in 2:51){
-  imp.all.rpm[,i] <- (imp.all2[,i]/sum(imp.all2[,i])) * 1e6
+imp.all.rpm <- imp.all
+for(i in 2:47){
+  imp.all.rpm[,i] <- (imp.all[,i]/sum(imp.all[,i])) * 1e6
 }
+#imp.all.TE.rpm <- imp.all.TE
+#for(i in 2:47){
+ # imp.all.TE.rpm[,i] <- (imp.all.TE[,i]/sum(imp.all.TE[,i])) * 1e6
+#}
 
+#imp.all.TE2 <- imp.all[-(1:4),] # remove non-feature and ambiguous reads
 ```
 
 
 Summary stats about libraries
 ```{r}
-imp.all.numerator <- imp.all2
-imp.all.denominator <- imp.all2 
+imp.all.numerator <- imp.all
+imp.all.denominator <- imp.all
+# remove non-feature and ambiguous reads
 
-summary.stats.libraries <- data.frame(cbind(colSums(imp.all.denominator[,2:51]),(colSums(imp.all.numerator[,2:51])/colSums(imp.all.denominator[,2:51]))*100))
+
+summary.stats.libraries <- data.frame(cbind(colSums(imp.all.denominator[,2:47]),(colSums(imp.all.numerator[,2:47])/colSums(imp.all.denominator[,2:47]))*100))
 names(summary.stats.libraries) <- c("Reads","Percent_Unique")
 mean(summary.stats.libraries$Percent_Unique)
 
@@ -99,88 +80,65 @@ mean(summary.stats.libraries$Percent_Unique)
 rownames(imp.all.rpm) <- imp.all.rpm$ID
 imp.all.rpm2 <- imp.all.rpm
 imp.all.rpm2$ID <- NULL
-#remove summary stats info from df 
-#imp.all.rpm2 <- subset(imp.all.rpm2, grepl("Z|TE", row.names(imp.all.rpm2)))
 
 ```
 
 
 ```{r}
 
-imp.all.rpm2$feature_type <- ifelse(nchar(rownames(imp.all.rpm2)) > 20 |grepl("TE",rownames(imp.all.rpm2)), "TE","gene")# Label features as TEs or genes
-table(imp.all.rpm2$feature_type)
-
-imp.all.tmp <- subset(imp.all.rpm2,imp.all.rpm2$feature_type == "gene")
-imp.all.rpm2 <- imp.all.tmp
-
-
-imp.all.rpm2$genome <-ifelse(grepl("Zm00001e|B73",rownames(imp.all.rpm2)),"B73",ifelse(grepl("Zm00018|B97",rownames(imp.all.rpm2)),"B97",ifelse(grepl("Zm00039a|Oh43",rownames(imp.all.rpm2)),"Oh43",ifelse(grepl("Zm00008a|PH207",rownames(imp.all.rpm2)),"PH207", ifelse(grepl("Zm00004b|W22",rownames(imp.all.rpm2)), "W22", ifelse(grepl("Zm00030a|Ki11",rownames(imp.all.rpm2)), "Ki11", ifelse(grepl("Zm00014|Mo17",rownames(imp.all.rpm2)), "Mo17", ifelse(grepl("Zm00040|P39",rownames(imp.all.rpm2)), "P39",  ifelse(grepl("Zm00037|NC358",rownames(imp.all.rpm2)), "NC358", ifelse(grepl("Zm00031|Ky21",rownames(imp.all.rpm2)), "Ky21", ifelse(grepl("Zm00026|CML333",rownames(imp.all.rpm2)), "CML333", ifelse(grepl("Zm00033|M162W",rownames(imp.all.rpm2)), "M162W", ifelse(grepl("Zm00032|M37W",rownames(imp.all.rpm2)), "M37W","NA"))))))))))))) # Label which genome the feature annotation is from
+imp.all.rpm2$feature_type <- ifelse(nchar(rownames(imp.all.rpm2)) == 21, "TE", ifelse(grepl("TE",rownames(imp.all.rpm2)), "TE","gene"))# Label features as TEs or genes
+#imp.all.rpm2 <- imp.all.rpm2[-(120098:120102),]
+imp.all.rpm2$genome <-ifelse(grepl("Zm00001e",rownames(imp.all.rpm2)),"B73",ifelse(grepl("Zm00018",rownames(imp.all.rpm2)),"B97",ifelse(grepl("Zm00039a",rownames(imp.all.rpm2)),"Oh43",ifelse(grepl("Zm00008a",rownames(imp.all.rpm2)),"PH207", ifelse(grepl("Zm00004b",rownames(imp.all.rpm2)), "W22", ifelse(grepl("Zm00030a",rownames(imp.all.rpm2)), "Ki11", ifelse(grepl("Zm00014",rownames(imp.all.rpm2)), "Mo17", "NA"))))))) # Label which genome the feature annotation is from
 table(imp.all.rpm2$genome)
-
 ```
 
 For each pair of genotypes, make the same columns and then do the math for the maternal preference ratio
 ```{r}
-imp.BvB.rpm <- imp.all.rpm2[,c(1:6,51,52)]
+imp.BvB.rpm <- imp.all.rpm2[,c(1:6,47,48)]
 imp.BvB.rpm$contrast <- "BB"
 imp.BvB.rpm$type <- ifelse(imp.BvB.rpm$genome == "B97","A","B")
 imp.BvB.rpm$feature <- rownames(imp.BvB.rpm)
 
 
-imp.BvO.rpm <- imp.all.rpm2[,c(7:12,51,52)]
+imp.BvO.rpm <- imp.all.rpm2[,c(7:12,47,48)]
 imp.BvO.rpm$contrast <- "BO"
 imp.BvO.rpm$type <- ifelse(imp.BvO.rpm$genome == "Oh43","A","B")
 imp.BvO.rpm$feature <- rownames(imp.BvO.rpm)
 
-imp.BvW.rpm <- imp.all.rpm2[,c(13:18,51,52)]
+imp.BvW.rpm <- imp.all.rpm2[,c(13:18,47,48)]
 imp.BvW.rpm$contrast <- "BW"
 imp.BvW.rpm$type <- ifelse(imp.BvW.rpm$genome == "W22","A","B")
 imp.BvW.rpm$feature <- rownames(imp.BvW.rpm)
 
-imp.BvK.rpm <- imp.all.rpm2[,c(23:26,51,52)]
+imp.BvK.rpm <- imp.all.rpm2[,c(29:32,47,48)]
 imp.BvK.rpm$contrast <- "BK"
 imp.BvK.rpm$type <- ifelse(imp.BvK.rpm$genome == "Ki11","A","B")
 imp.BvK.rpm$feature <- rownames(imp.BvK.rpm)
 
-imp.BvO_MN.rpm <- imp.all.rpm2[,c(19:22,51,52)]
+imp.MvO.rpm <- imp.all.rpm2[,c(37:40,47,48)]
+imp.MvO.rpm$contrast <- "MO"
+imp.MvO.rpm$type <- ifelse(imp.MvO.rpm$genome == "Oh43","A","B")
+imp.MvO.rpm$feature <- rownames(imp.MvO.rpm)
+
+imp.MvK.rpm <- imp.all.rpm2[,c(33:36,47,48)]
+imp.MvK.rpm$contrast <- "MK"
+imp.MvK.rpm$type <- ifelse(imp.MvK.rpm$genome == "Ki11","A","B")
+imp.MvK.rpm$feature <- rownames(imp.MvK.rpm)
+
+imp.BvO_MN.rpm <- imp.all.rpm2[,c(25:28,47,48)]
 imp.BvO_MN.rpm$contrast <- "OB_MN"
 imp.BvO_MN.rpm$type <- ifelse(imp.BvO_MN.rpm$genome == "Oh43","A","B")
 imp.BvO_MN.rpm$feature <- rownames(imp.BvO_MN.rpm)
 
-imp.CvB.rpm <- imp.all.rpm2[,c(27:32,51,52)]
-imp.CvB.rpm$contrast <- "CB"
-imp.CvB.rpm$type <- ifelse(imp.CvB.rpm$genome == "NC358","A","B")
-imp.CvB.rpm$feature <- rownames(imp.CvB.rpm)
-
-imp.DvB.rpm <- imp.all.rpm2[,c(33:38,51,52)]
-imp.DvB.rpm$contrast <- "DB"
-imp.DvB.rpm$type <- ifelse(imp.DvB.rpm$genome == "Ky21","A","B")
-imp.DvB.rpm$feature <- rownames(imp.DvB.rpm)
-
-imp.FvB.rpm <- imp.all.rpm2[,c(45:50,51,52)]
-imp.FvB.rpm$contrast <- "FB"
-imp.FvB.rpm$type <- ifelse(imp.FvB.rpm$genome == "M162W","A","B")
-imp.FvB.rpm$feature <- rownames(imp.FvB.rpm)
-
-imp.EvB.rpm <- imp.all.rpm2[,c(39,40,42,43,51,52)]
-imp.EvB.rpm$contrast <- "EB"
-imp.EvB.rpm$type <- ifelse(imp.EvB.rpm$genome == "CML333","A","B")
-imp.EvB.rpm$feature <- rownames(imp.EvB.rpm)
-
 #imp.B73 <- subset(imp.BvB.rpm, nchar(row.names(imp.BvB.rpm)) == 15 & starts_with(row.names(imp.BvB.rpm)== "Zm00001"))
-```
 
-```{r}
 names(imp.BvB.rpm) <- c("cross1","cross2","cross3", "cross4","cross5","cross6","feature_type","genome","contrast","type","feature")
 names(imp.BvO.rpm) <- c("cross1","cross2","cross3", "cross4","cross5","cross6","feature_type","genome","contrast","type","feature")
 names(imp.BvW.rpm) <- c("cross1","cross2","cross3", "cross4","cross5","cross6","feature_type","genome","contrast","type","feature")
+names(imp.MvO.rpm) <- c("cross1","cross2","cross3", "cross4","feature_type","genome","contrast","type","feature")
+names(imp.MvK.rpm) <- c("cross1","cross2","cross3", "cross4","feature_type","genome","contrast","type","feature")
 names(imp.BvK.rpm) <- c("cross1","cross2", "cross3", "cross4","feature_type","genome","contrast","type","feature")
 names(imp.BvO_MN.rpm) <- c("cross1","cross2","cross3", "cross4","feature_type","genome","contrast","type","feature")
-names(imp.CvB.rpm) <- c("cross1","cross2","cross3", "cross4","cross5","cross6","feature_type","genome","contrast","type","feature")
-names(imp.DvB.rpm) <- c("cross1","cross2","cross3", "cross4","cross5","cross6","feature_type","genome","contrast","type","feature")
-names(imp.FvB.rpm) <- c("cross1","cross2","cross3", "cross4","cross5","cross6","feature_type","genome","contrast","type","feature")
-names(imp.EvB.rpm) <- c("cross1","cross2","cross3", "cross4","feature_type","genome","contrast","type","feature")
-
 
 imp.BvB.rpm$A_mean <- rowMeans(imp.BvB.rpm[,1:3])
 imp.BvB.rpm$B_mean <- rowMeans(imp.BvB.rpm[,4:6])
@@ -190,101 +148,47 @@ imp.BvO.rpm$A_mean <- rowMeans(imp.BvO.rpm[,1:2])
 imp.BvO.rpm$B_mean <- rowMeans(imp.BvO.rpm[,3:6])
 imp.BvK.rpm$A_mean <- rowMeans(imp.BvK.rpm[,1:2])
 imp.BvK.rpm$B_mean <- rowMeans(imp.BvK.rpm[,3:4])
+imp.MvO.rpm$A_mean <- rowMeans(imp.MvO.rpm[,1:2])
+imp.MvO.rpm$B_mean <- rowMeans(imp.MvO.rpm[,3:4])
+imp.MvK.rpm$A_mean <- rowMeans(imp.MvK.rpm[,1:2])
+imp.MvK.rpm$B_mean <- rowMeans(imp.MvK.rpm[,3:4])
 imp.BvO_MN.rpm$A_mean <- rowMeans(imp.BvO_MN.rpm[,1:2])
 imp.BvO_MN.rpm$B_mean <- rowMeans(imp.BvO_MN.rpm[,3:4])
-imp.CvB.rpm$A_mean <- rowMeans(imp.CvB.rpm[,1:3])
-imp.CvB.rpm$B_mean <- rowMeans(imp.CvB.rpm[,4:6])
-imp.DvB.rpm$A_mean <- rowMeans(imp.DvB.rpm[,1:3])
-imp.DvB.rpm$B_mean <- rowMeans(imp.DvB.rpm[,4:6])
-imp.FvB.rpm$A_mean <- rowMeans(imp.FvB.rpm[,1:3])
-imp.FvB.rpm$B_mean <- rowMeans(imp.FvB.rpm[,4:6])
-imp.EvB.rpm$A_mean <- rowMeans(imp.EvB.rpm[,1:2])
-imp.EvB.rpm$B_mean <- rowMeans(imp.EvB.rpm[,3:4])
 
 imp.BvO.rpm$maternal_preference <- ifelse(imp.BvO.rpm$type == "A",imp.BvO.rpm$A_mean/(imp.BvO.rpm$A_mean + imp.BvO.rpm$B_mean) ,imp.BvO.rpm$B_mean/(imp.BvO.rpm$A_mean + imp.BvO.rpm$B_mean))
 
 imp.BvB.rpm$maternal_preference <- ifelse(imp.BvB.rpm$type == "A",imp.BvB.rpm$A_mean/(imp.BvB.rpm$B_mean + imp.BvB.rpm$A_mean) ,imp.BvB.rpm$B_mean/(imp.BvB.rpm$B_mean + imp.BvB.rpm$A_mean))# maternal preference calculation
-
 imp.BvK.rpm$maternal_preference <- ifelse(imp.BvK.rpm$type == "A",imp.BvK.rpm$A_mean/(imp.BvK.rpm$B_mean + imp.BvK.rpm$A_mean) ,imp.BvK.rpm$B_mean/(imp.BvK.rpm$B_mean + imp.BvK.rpm$A_mean))
+
+imp.MvO.rpm$maternal_preference <- ifelse(imp.MvO.rpm$type == "A",imp.MvO.rpm$A_mean/(imp.MvO.rpm$B_mean + imp.MvO.rpm$A_mean) ,imp.MvO.rpm$B_mean/(imp.MvO.rpm$B_mean + imp.MvO.rpm$A_mean))
+
+imp.MvK.rpm$maternal_preference <- ifelse(imp.MvK.rpm$type == "A",imp.MvK.rpm$A_mean/(imp.MvK.rpm$B_mean + imp.MvK.rpm$A_mean) ,imp.MvK.rpm$B_mean/(imp.MvK.rpm$B_mean + imp.MvK.rpm$A_mean))
 
 imp.BvW.rpm$maternal_preference <- ifelse(imp.BvW.rpm$type == "A",imp.BvW.rpm$A_mean/(imp.BvW.rpm$B_mean + imp.BvW.rpm$A_mean) ,imp.BvW.rpm$B_mean/(imp.BvW.rpm$B_mean + imp.BvW.rpm$A_mean))
 
 imp.BvO_MN.rpm$maternal_preference <- ifelse(imp.BvO_MN.rpm$type == "A",imp.BvO_MN.rpm$A_mean/(imp.BvO_MN.rpm$A_mean + imp.BvO_MN.rpm$B_mean) ,imp.BvO_MN.rpm$B_mean/(imp.BvO_MN.rpm$A_mean + imp.BvO_MN.rpm$B_mean))
 
-imp.CvB.rpm$maternal_preference <- ifelse(imp.CvB.rpm$type == "A",imp.CvB.rpm$A_mean/(imp.CvB.rpm$B_mean + imp.CvB.rpm$A_mean) ,imp.CvB.rpm$B_mean/(imp.CvB.rpm$B_mean + imp.CvB.rpm$A_mean))
-imp.DvB.rpm$maternal_preference <- ifelse(imp.DvB.rpm$type == "A",imp.DvB.rpm$A_mean/(imp.DvB.rpm$B_mean + imp.DvB.rpm$A_mean) ,imp.DvB.rpm$B_mean/(imp.DvB.rpm$B_mean + imp.DvB.rpm$A_mean))
 
-imp.FvB.rpm$maternal_preference <- ifelse(imp.FvB.rpm$type == "A",imp.FvB.rpm$A_mean/(imp.FvB.rpm$B_mean + imp.FvB.rpm$A_mean) ,imp.FvB.rpm$B_mean/(imp.FvB.rpm$B_mean + imp.FvB.rpm$A_mean))
-imp.EvB.rpm$maternal_preference <- ifelse(imp.EvB.rpm$type == "A",imp.EvB.rpm$A_mean/(imp.EvB.rpm$B_mean + imp.EvB.rpm$A_mean) ,imp.EvB.rpm$B_mean/(imp.EvB.rpm$B_mean + imp.EvB.rpm$A_mean))
-```
+imp.recips1.rpm <- data.frame(rbind(imp.BvB.rpm,imp.BvO.rpm,imp.BvW.rpm))
+imp.recips2.rpm <- data.frame(rbind(imp.MvO.rpm,imp.MvK.rpm,imp.BvK.rpm,imp.BvO_MN.rpm))
 
-
-```{r}
-imp.recips1.rpm <- data.frame(rbind(imp.BvB.rpm,imp.BvW.rpm,imp.CvB.rpm,imp.DvB.rpm,imp.FvB.rpm))
-imp.recips2.rpm <- data.frame(rbind(imp.BvK.rpm,imp.BvO_MN.rpm,imp.EvB.rpm))
-```
-imp.BvO.rpm
-```{r}
 
 imp.BvB.rpm <- subset(imp.BvB.rpm, imp.BvB.rpm$maternal_preference != "NaN")
 imp.BvO.rpm <- subset(imp.BvO.rpm, imp.BvO.rpm$maternal_preference != "NaN")
 imp.BvO_MN.rpm <- subset(imp.BvO_MN.rpm, imp.BvO_MN.rpm$maternal_preference != "NaN")
 imp.BvW.rpm <- subset(imp.BvW.rpm, imp.BvW.rpm$maternal_preference != "NaN")
 imp.BvK.rpm <- subset(imp.BvK.rpm, imp.BvK.rpm$maternal_preference != "NaN")
-imp.CvB.rpm <- subset(imp.CvB.rpm, imp.CvB.rpm$maternal_preference != "NaN")
-imp.DvB.rpm <- subset(imp.DvB.rpm, imp.DvB.rpm$maternal_preference != "NaN")
-imp.FvB.rpm <- subset(imp.FvB.rpm, imp.FvB.rpm$maternal_preference != "NaN")
-imp.EvB.rpm <- subset(imp.EvB.rpm, imp.EvB.rpm$maternal_preference != "NaN")
+imp.MvK.rpm <- subset(imp.MvK.rpm, imp.MvK.rpm$maternal_preference != "NaN")
+imp.MvO.rpm <- subset(imp.MvO.rpm, imp.MvO.rpm$maternal_preference != "NaN")
+
 
 imp.BvB.rpm$expression <- (ifelse(imp.BvB.rpm$maternal_preference >= .8, "pos_MEG", ifelse(imp.BvB.rpm$maternal_preference <= .3, "pos_PEG", ifelse(imp.BvB.rpm$maternal_preference == "NaN", "not.exp", "biparental"))))
 imp.BvO.rpm$expression <- (ifelse(imp.BvO.rpm$maternal_preference >= .8, "pos_MEG", ifelse(imp.BvO.rpm$maternal_preference <= .3, "pos_PEG", ifelse(imp.BvO.rpm$maternal_preference == "NaN", "not.exp", "biparental"))))
 imp.BvO_MN.rpm$expression <- (ifelse(imp.BvO_MN.rpm$maternal_preference >= .8, "pos_MEG", ifelse(imp.BvO_MN.rpm$maternal_preference <= .3, "pos_PEG", ifelse(imp.BvO_MN.rpm$maternal_preference == "NaN", "not.exp", "biparental"))))
 imp.BvK.rpm$expression <- (ifelse(imp.BvK.rpm$maternal_preference >= .8, "pos_MEG", ifelse(imp.BvK.rpm$maternal_preference <= .3, "pos_PEG", ifelse(imp.BvK.rpm$maternal_preference == "NaN", "not.exp", "biparental"))))
 imp.BvW.rpm$expression <- (ifelse(imp.BvW.rpm$maternal_preference >= .8, "pos_MEG", ifelse(imp.BvW.rpm$maternal_preference <= .3, "pos_PEG", ifelse(imp.BvW.rpm$maternal_preference == "NaN", "not.exp", "biparental"))))
-imp.CvB.rpm$expression <- (ifelse(imp.CvB.rpm$maternal_preference >= .8, "pos_MEG", ifelse(imp.CvB.rpm$maternal_preference <= .3, "pos_PEG", ifelse(imp.CvB.rpm$maternal_preference == "NaN", "not.exp", "biparental"))))
-imp.DvB.rpm$expression <- (ifelse(imp.DvB.rpm$maternal_preference >= .8, "pos_MEG", ifelse(imp.DvB.rpm$maternal_preference <= .3, "pos_PEG", ifelse(imp.DvB.rpm$maternal_preference == "NaN", "not.exp", "biparental"))))
-imp.FvB.rpm$expression <- (ifelse(imp.FvB.rpm$maternal_preference >= .8, "pos_MEG", ifelse(imp.FvB.rpm$maternal_preference <= .3, "pos_PEG", ifelse(imp.FvB.rpm$maternal_preference == "NaN", "not.exp", "biparental"))))
-imp.EvB.rpm$expression <- (ifelse(imp.EvB.rpm$maternal_preference >= .8, "pos_MEG", ifelse(imp.EvB.rpm$maternal_preference <= .3, "pos_PEG", ifelse(imp.EvB.rpm$maternal_preference == "NaN", "not.exp", "biparental"))))
-
-#create df of mat preference for all genes
-  #first cut each df to just feature, contrast, mat pref, and expression
-BvB.tmp <- imp.BvB.rpm[,c(8:15)]
-BvO.tmp <- imp.BvO.rpm[,c(8:15)]
-BvO_MN.tmp <- imp.BvO_MN.rpm[,c(6:13)]
-BvK.tmp <- imp.BvK.rpm[,c(6:13)]
-BvW.tmp <- imp.BvW.rpm[,c(8:15)]
-CvB.tmp <- imp.CvB.rpm[,c(8:15)]
-DvB.tmp <- imp.DvB.rpm[,c(8:15)]
-FvB.tmp <- imp.FvB.rpm[,c(8:15)]
-EvB.tmp <- imp.EvB.rpm[,c(6:13)]
-all_mat_pref <- rbind(BvB.tmp, BvO.tmp, BvO_MN.tmp,BvK.tmp,BvW.tmp,CvB.tmp,DvB.tmp,FvB.tmp,EvB.tmp)
-BvB.tmp <- NULL
-BvO.tmp <- NULL
-BvO_MN.tmp <- NULL
-BvK.tmp <- NULL
-BvW.tmp <- NULL
-CvB.tmp <- NULL
-DvB.tmp <- NULL
-FvB.tmp <- NULL
-EvB.tmp <- NULL
-#write.table(all_mat_pref, file = "//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/NAM/mat_pref_NAM.txt",col.names = T,row.names = F,sep = "\t")
-#write.table(all_mat_pref, file = "C:/Users/kmhig/Downloads/mat_pref_NAM.txt",col.names = T,row.names = F,sep = "\t")
-```
-
-```{r}
-##Everything after this delete
-zein <- read.table("//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/data/zein_gene_key_listed.txt")
-zein_mat_pref <- subset(all_mat_pref, all_mat_pref$feature %in% zein$V1)
-
-#ggplot(zein_mat_pref,aes(x= feature,y= maternal_preference, fill = contrast)) + geom_bar(stat = 'identity',position=position_dodge()) + facet_wrap(type ~ expression)
-
-Zm00001eb315100_mat_pref <- subset(zein_mat_pref, zein_mat_pref$feature == "Zm00001eb315100")
-
-synt_mat <-subset(zein_mat_pref, zein_mat_pref$feature == "Zm00030ab317170" | zein_mat_pref$feature == "Zm00032ab329780" | zein_mat_pref$feature == "Zm00033ab334440"| zein_mat_pref$feature == "Zm00026ab319050"|zein_mat_pref$feature=="Zm00031ab328250"|zein_mat_pref$feature == "Zm00037ab319400"|zein_mat_pref$feature == "Zm00040ab335780"|zein_mat_pref$feature == "Zm00008a028290"|zein_mat_pref$feature == "Zm00004b036199"|zein_mat_pref$feature == "Zm00014a039666"|zein_mat_pref$feature == "Zm00039ab321850"|zein_mat_pref$feature == "Zm00018ab330510")
-Zm00001eb315100_mat_pref_with_synt <- rbind(Zm00001eb315100_mat_pref,synt_mat)
-
-ggplot(Zm00001eb315100_mat_pref_with_synt,aes(x=rownames(Zm00001eb315100_mat_pref_with_synt), y=maternal_preference, fill=genome, color=contrast)) + geom_bar(stat = "identity", position = position_dodge())+ theme(axis.text.x = element_text(angle = 45, hjust = 1)) + geom_hline(yintercept = c(.8,.3), linetype='dashed',color=c('maroon','navy'))
-
+imp.MvK.rpm$expression <- (ifelse(imp.MvK.rpm$maternal_preference >= .8, "pos_MEG", ifelse(imp.MvK.rpm$maternal_preference <= .3, "pos_PEG", ifelse(imp.MvK.rpm$maternal_preference == "NaN", "not.exp", "biparental"))))
+imp.MvO.rpm$expression <- (ifelse(imp.MvO.rpm$maternal_preference >= .8, "pos_MEG", ifelse(imp.MvO.rpm$maternal_preference <= .3, "pos_PEG", ifelse(imp.MvO.rpm$maternal_preference == "NaN", "not.exp", "biparental"))))
 ```
 
 Plot the maternal preferance distributipns for each contrast, genome, and feature type
@@ -292,8 +196,8 @@ Plot the maternal preferance distributipns for each contrast, genome, and featur
 imp.recips1.filter <- subset(imp.recips1.rpm,imp.recips1.rpm$A_mean >= 1 | imp.recips1.rpm$B_mean >= 1)
 imp.recips2.filter <- subset(imp.recips2.rpm,imp.recips2.rpm$A_mean >= 1 | imp.recips2.rpm$B_mean >= 1)
 
-c <- ggplot(imp.recips1.filter,aes(x=genome,y=maternal_preference,fill=genome))+ geom_abline(slope=0, intercept=.33) + geom_abline(slope=0, intercept=.66) + geom_violin() + theme_classic() + theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()) + facet_wrap(feature_type~contrast,scales="free_x")  + stat_summary(fun.data = give.n, geom = "text") + scale_fill_brewer(palette = "BuPu")
-d <- ggplot(imp.recips2.filter,aes(x=genome,y=maternal_preference,fill=genome))+ geom_abline(slope=0, intercept=.33) + geom_abline(slope=0, intercept=.66) + geom_violin() + theme_classic() + theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()) + facet_wrap(feature_type~contrast,scales="free_x")  + stat_summary(fun.data = give.n, geom = "text") + scale_fill_brewer(palette = 'BuPu')
+c <- ggplot(imp.recips1.filter,aes(x=genome,y=maternal_preference,fill=genome))+ geom_abline(slope=0, intercept=.33) + geom_abline(slope=0, intercept=.66) + geom_violin() + theme_classic() + theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()) + facet_wrap(feature_type~contrast,scales="free_x")  + stat_summary(fun.data = give.n, geom = "text") + scale_fill_manual(values = maize_pal("HighlandMAGIC"))
+d <- ggplot(imp.recips2.filter,aes(x=genome,y=maternal_preference,fill=genome))+ geom_abline(slope=0, intercept=.33) + geom_abline(slope=0, intercept=.66) + geom_violin() + theme_classic() + theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()) + facet_wrap(feature_type~contrast,scales="free_x")  + stat_summary(fun.data = give.n, geom = "text") + scale_fill_manual(values = maize_pal("HighlandMAGIC"))
 c
 d
 grid.arrange(c,d, nrow =1)
@@ -301,11 +205,11 @@ grid.arrange(c,d, nrow =1)
 
 Use DEseq to call significance over a log2FC cutoff of 1 (2-fold, which is the expected ratio)
 ```{r}
-imp.all.de.BB <- imp.all2[,c(grepl("B97", colnames(imp.all2)))]
-rownames(imp.all.de.BB) <- imp.all2$ID
+imp.all.de.BB <- imp.all[,2:7]
+rownames(imp.all.de.BB) <- imp.all$ID
 #imp.all.de.keep.BB <- subset(imp.all.de.BB,rowSums(imp.all.de.BB >0) >= 3) 
 imp.all.de.keep.BB <- subset(imp.all.de.BB,rowSums(imp.all.de.BB) >= 10) 
-imp.all.de.keep.BB <- subset(imp.all.de.BB,rowMeans(imp.all.de.BB[,1:3]) >= 0.5 | rowMeans(imp.all.de.BB[,4:6]) >= 0.5) 
+imp.all.de.keep.BB <- subset(imp.all.de.BB,rowMeans(imp.all.rpm2[,1:3]) >= 0.5 | rowMeans(imp.all.rpm2[,4:6]) >= 0.5) 
 
 sample.info.BB <- as.data.frame(cbind(paste(names(imp.all.de.keep.BB)),c("BB","BB","BB","WB","WB","WB")))
 rownames(sample.info.BB) <- sample.info.BB[,1]
@@ -329,9 +233,9 @@ Plot results with respect to RER
 ```{r}
 out.BB <- data.frame(res.BB)
 plot.out.BB <- merge(imp.BvB.rpm,out.BB,by.x="feature",by.y="row.names",all=F)
-plot.out.BB$sig <- ifelse(plot.out.BB$padj < 0.01, "TRUE", "FALSE")
+plot.out.BB$sig <- ifelse(plot.out.BB$padj < 0.005, "TRUE", "FALSE")
 plot.out2.BB <- subset(plot.out.BB,!is.na(plot.out.BB$sig) & plot.out.BB$contrast %in% c("BB","WB"))
-plot.out2.BB$category <- ifelse(plot.out2.BB$padj < 0.01 & plot.out2.BB$log2FoldChange < -1 & (plot.out2.BB$maternal_preference > .9 | plot.out2.BB$maternal_preference < .1), "up",ifelse(plot.out2.BB$padj < 0.01 & plot.out2.BB$log2FoldChange > 1 & (plot.out2.BB$maternal_preference > .9 | plot.out2.BB$maternal_preference < .1),"down","notDE"))
+plot.out2.BB$category <- ifelse(plot.out2.BB$padj < 0.05 & plot.out2.BB$log2FoldChange < -1 & (plot.out2.BB$maternal_preference > .9 | plot.out2.BB$maternal_preference < .1), "up",ifelse(plot.out2.BB$padj < 0.05 & plot.out2.BB$log2FoldChange > 1 & (plot.out2.BB$maternal_preference > .9 | plot.out2.BB$maternal_preference < .1),"down","notDE"))
 
 plot.out2.BB$imprint <- ifelse(plot.out2.BB$category =="up" & plot.out2.BB$genome == "B97","MEG",
                                ifelse(plot.out2.BB$category =="down" & plot.out2.BB$genome == "B97","PEG",
@@ -347,11 +251,11 @@ e
 
 Repeat for BO
 ```{r}
-imp.all.de.BO <- imp.all2[,c(8:13)]
-rownames(imp.all.de.BO) <- imp.all2$ID
+imp.all.de.BO <- imp.all[,8:13]
+rownames(imp.all.de.BO) <- imp.all$ID
 #imp.all.de.keep.BO <- subset(imp.all.de.BO,rowSums(imp.all.de.BO >0) >= 3)
 imp.all.de.keep.BO <- subset(imp.all.de.BO,rowSums(imp.all.de.BO) >= 10)
-imp.all.de.keep.BO <- subset(imp.all.de.BO,rowMeans(imp.all.de.BO[,c(1:3)]) >= 0.5 | rowMeans(imp.all.de.BO[,c(4:6)]) >= 0.5) 
+#imp.all.de.keep.BO <- subset(imp.all.de.BO,rowMeans(imp.all.rpm2[,7:9]) >= 0.5 | rowMeans(imp.all.rpm2[,10:12]) >= 0.5) 
 
 sample.info.BO <- as.data.frame(cbind(paste(names(imp.all.de.keep.BO)),c("OB","OB","BO","BO","BO","BO")))
 rownames(sample.info.BO) <- sample.info.BO[,1]
@@ -364,20 +268,16 @@ res.BO <- results(dds.BO, lfcThreshold=1, altHypothesis = "greaterAbs")
 #par(mfrow=c(2,2),mar=c(2,2,1,1))
 ylim <- c(-2.5,2.5)
 plotMA(res.BO, ylim=ylim); drawLines()
-
-rld <- rlog(dds.BO, blind=FALSE)
-z <- plotPCA(rld,intgroup="sample_list.BO",ntop = 10000)
-z
 ```
 
 Plot results with respect to RER
 ```{r}
 out.BO <- data.frame(res.BO)
 plot.out.BO <- merge(imp.BvO.rpm,out.BO,by.x="feature",by.y="row.names",all=F)
-plot.out.BO$sig <- ifelse(plot.out.BO$padj < 0.05, "TRUE", "FALSE")
+plot.out.BO$sig <- ifelse(plot.out.BO$padj < 0.005, "TRUE", "FALSE")
 plot.out2.BO <- subset(plot.out.BO,!is.na(plot.out.BO$sig) & plot.out.BO$contrast %in% c("OB","BO"))
 
-plot.out2.BO$category <- ifelse(plot.out2.BO$padj < 0.05 & plot.out2.BO$log2FoldChange < -1 & (plot.out2.BO$maternal_preference > .9 | plot.out2.BO$maternal_preference < .1), "up",ifelse(plot.out2.BO$padj < 0.05 & plot.out2.BO$log2FoldChange > 1 & (plot.out2.BO$maternal_preference > .9 | plot.out2.BO$maternal_preference < .1),"down","notDE"))
+plot.out2.BO$category <- ifelse(plot.out2.BO$padj < 0.005 & plot.out2.BO$log2FoldChange < -1 & (plot.out2.BO$maternal_preference > .9 | plot.out2.BO$maternal_preference < .1), "up",ifelse(plot.out2.BO$padj < 0.1 & plot.out2.BO$log2FoldChange > 1 & (plot.out2.BO$maternal_preference > .9 | plot.out2.BO$maternal_preference < .1),"down","notDE"))
 
 plot.out2.BO$imprint <- ifelse(plot.out2.BO$category =="up" & plot.out2.BO$genome == "B73","MEG",
                                ifelse(plot.out2.BO$category =="down" & plot.out2.BO$genome == "B73","PEG",
@@ -390,11 +290,11 @@ f
 ```
 Repeat for All other crosses
 ```{r}
-imp.all.de.BO_MN <- imp.all2[,c(20:23)]
-rownames(imp.all.de.BO_MN) <- imp.all2$ID
+imp.all.de.BO_MN <- imp.all[,26:29]
+rownames(imp.all.de.BO_MN) <- imp.all$ID
 #imp.all.de.keep.BO_MN <- subset(imp.all.de.BO_MN,rowSums(imp.all.de.BO_MN >0) >= 3)
 imp.all.de.keep.BO_MN <- subset(imp.all.de.BO_MN,rowSums(imp.all.de.BO_MN) >= 10)
-imp.all.de.keep.BO_MN <- subset(imp.all.de.BO_MN,rowMeans(imp.all.de.BO_MN[,c(1,2)]) >= 0.5 | rowMeans(imp.all.de.BO_MN[,c(3,4)]) >= 0.5) 
+imp.all.de.keep.BO_MN <- subset(imp.all.de.BO_MN,rowMeans(imp.all.rpm2[,25:26]) >= 0.5 | rowMeans(imp.all.rpm2[,27:28]) >= 0.5) 
 
 sample.info.BO_MN <- as.data.frame(cbind(paste(names(imp.all.de.keep.BO_MN)),c("OB_MN","OB_MN","BO_MN","BO_MN")))
 #rownames(sample.info.BO_MN) <- sample.info.BO_MN[,1]
@@ -407,20 +307,16 @@ res.BO_MN <- results(dds.BO_MN, lfcThreshold=1, altHypothesis = "greaterAbs")
 #par(mfrow=c(2,2),mar=c(2,2,1,1))
 ylim <- c(-2.5,2.5)
 plotMA(res.BO_MN, ylim=ylim); drawLines()
-
-rld <- rlog(dds.BO_MN, blind=FALSE)
-y <- plotPCA(rld,intgroup="sample_list.BO_MN",ntop = 10000)
-y
 ```
 
 Plot results with respect to RER
 ```{r}
 out.BO_MN <- data.frame(res.BO_MN)
 plot.out.BO_MN <- merge(imp.BvO_MN.rpm,out.BO_MN,by.x="feature",by.y="row.names",all=F)
-plot.out.BO_MN$sig <- ifelse(plot.out.BO_MN$padj < 0.05, "TRUE", "FALSE")
+plot.out.BO_MN$sig <- ifelse(plot.out.BO_MN$padj < 0.005, "TRUE", "FALSE")
 plot.out2.BO_MN <- subset(plot.out.BO_MN,!is.na(plot.out.BO_MN$sig) & plot.out.BO_MN$contrast %in% c("OB_MN","BO_MN"))
 
-plot.out2.BO_MN$category <- ifelse(plot.out2.BO_MN$padj < 0.05 & plot.out2.BO_MN$log2FoldChange < -1 & (plot.out2.BO_MN$maternal_preference > .9 | plot.out2.BO_MN$maternal_preference < .1), "up",ifelse(plot.out2.BO_MN$padj < 0.05 & plot.out2.BO_MN$log2FoldChange > 1 & (plot.out2.BO_MN$maternal_preference > .9 | plot.out2.BO_MN$maternal_preference < .1),"down","notDE"))
+plot.out2.BO_MN$category <- ifelse(plot.out2.BO_MN$padj < 0.005 & plot.out2.BO_MN$log2FoldChange < -1 & (plot.out2.BO_MN$maternal_preference > .9 | plot.out2.BO_MN$maternal_preference < .1), "up",ifelse(plot.out2.BO_MN$padj < 0.005 & plot.out2.BO_MN$log2FoldChange > 1 & (plot.out2.BO_MN$maternal_preference > .9 | plot.out2.BO_MN$maternal_preference < .1),"down","notDE"))
 
 plot.out2.BO_MN$imprint <- ifelse(plot.out2.BO_MN$category =="up" & plot.out2.BO_MN$genome == "B73","MEG",
                                ifelse(plot.out2.BO_MN$category =="down" & plot.out2.BO_MN$genome == "B73","PEG",
@@ -436,11 +332,11 @@ g
 
 Repeat for BK
 ```{r}
-imp.all.de.BK <- imp.all2[,(24:27)]
-rownames(imp.all.de.BK) <- imp.all2$ID
+imp.all.de.BK <- imp.all[,30:33]
+rownames(imp.all.de.BK) <- imp.all$ID
 #imp.all.de.keep.BK <- subset(imp.all.de.BK,rowSums(imp.all.de.BK >0) >= 3)
 imp.all.de.keep.BK <- subset(imp.all.de.BK,rowSums(imp.all.de.BK) >= 10)
-imp.all.de.keep.BK <- subset(imp.all.de.BK,rowMeans(imp.all.de.BK[,c(1,2)]) >= 0.5 | rowMeans(imp.all.de.BK[,c(3,4)]) >= 0.5) 
+imp.all.de.keep.BK <- subset(imp.all.de.BK,rowMeans(imp.all.rpm2[,7:9]) >= 0.5 | rowMeans(imp.all.rpm2[,10:12]) >= 0.5) 
 
 sample.info.BK <- as.data.frame(cbind(paste(names(imp.all.de.keep.BK)),c("KB","KB","BK","BK")))
 rownames(sample.info.BK) <- sample.info.BK[,1]
@@ -453,10 +349,6 @@ res.BK <- results(dds.BK, lfcThreshold=1, altHypothesis = "greaterAbs")
 #par(mfrow=c(2,2),mar=c(2,2,1,1))
 ylim <- c(-2.5,2.5)
 plotMA(res.BK, ylim=ylim); drawLines()
-
-rld <- rlog(dds.BK, blind=FALSE)
-x <- plotPCA(rld,intgroup="sample_list.BK",ntop = 10000)
-x
 ```
 
 Plot results with respect to RER
@@ -474,191 +366,94 @@ plot.out2.BK$imprint <- ifelse(plot.out2.BK$category =="up" & plot.out2.BK$genom
                                              ifelse(plot.out2.BK$category =="up" & plot.out2.BK$genome == "Ki11","PEG","no.imprint"))))
 
 h <- ggplot(plot.out2.BK,aes(x=imprint,y=maternal_preference,fill=imprint)) + geom_violin() + theme_classic() + theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()) + geom_abline(slope=0, intercept=.33) + geom_abline(slope=0, intercept=.66) + stat_summary(fun.data = give.n, geom = "text") + facet_grid(genome~feature_type) + scale_fill_manual(values = maize_pal("HighlandMAGIC"))
-h
+
 #plot.out2.BK$filter.imprint <- ifelse(plot.out2.BK$imprint == "MEG" & (plot.out2.BK$feature %in% rownames(peri.preferred) | plot.out2.BK$feature %in% peri.preferred.Ki11),"filtered.MEG",plot.out2.BK$imprint)
 ```
 
-
 ```{r}
-imp.all.de.CB <- imp.all2[,c(29:33)]
-rownames(imp.all.de.CB) <- imp.all2$ID
-#imp.all.de.keep.CB <- subset(imp.all.de.CB,rowSums(imp.all.de.CB >0) >= 3)
-imp.all.de.keep.CB <- subset(imp.all.de.CB,rowSums(imp.all.de.CB) >= 10)
-imp.all.de.keep.CB <- subset(imp.all.de.CB,rowMeans(imp.all.de.CB[,c(1,2)]) >= 0.5 | rowMeans(imp.all.de.CB[,c(3:5)]) >= 0.5)
+imp.all.de.MO <- imp.all[,38:41]
+rownames(imp.all.de.MO) <- imp.all$ID
+#imp.all.de.keep.MO <- subset(imp.all.de.MO,rowSums(imp.all.de.MO >0) >= 3)
+imp.all.de.keep.MO <- subset(imp.all.de.MO,rowSums(imp.all.de.MO) >= 10)
+imp.all.de.keep.MO <- subset(imp.all.de.MO,rowMeans(imp.all.rpm2[,7:9]) >= 0.5 | rowMeans(imp.all.rpm2[,10:12]) >= 0.5) 
 
-sample.info.CB <- as.data.frame(cbind(paste(names(imp.all.de.keep.CB)),c("CB","CB","BC","BC","BC")))
-rownames(sample.info.CB) <- sample.info.CB[,1]
-sample_list.CB <- sample.info.CB[,2]
-names(sample.info.CB) <- c("sample.info.CB","sample_list.CB")
+sample.info.MO <- as.data.frame(cbind(paste(names(imp.all.de.keep.MO)),c("OM","OM","MO","MO")))
+rownames(sample.info.MO) <- sample.info.MO[,1]
+sample_list.MO <- sample.info.MO[,2]
+names(sample.info.MO) <- c("sample.info.MO","sample_list.MO")
 
-dds.CB <- DESeqDataSetFromMatrix(countData = imp.all.de.CB,colData = sample.info.CB, design = ~ sample_list.CB)
-dds.CB <- DESeq(dds.CB)
-res.CB <- results(dds.CB, lfcThreshold=1, altHypothesis = "greaterAbs")
+dds.MO <- DESeqDataSetFromMatrix(countData = imp.all.de.keep.MO,colData = sample.info.MO, design = ~ sample_list.MO)
+dds.MO <- DESeq(dds.MO)
+res.MO <- results(dds.MO, lfcThreshold=1, altHypothesis = "greaterAbs")
 #par(mfrow=c(2,2),mar=c(2,2,1,1))
 ylim <- c(-2.5,2.5)
-plotMA(res.CB, ylim=ylim); drawLines()
-
-rld <- vst(dds.CB, blind=FALSE)
-w <- plotPCA(rld, intgroup=c("sample.info.CB", "sample_list.CB" ))
-w
+plotMA(res.MO, ylim=ylim); drawLines()
 ```
 
 Plot results with respect to RER
 ```{r}
-out.CB <- data.frame(res.CB)
-plot.out.CB <- merge(imp.CvB.rpm,out.CB,by.x="feature",by.y="row.names",all=T)
-plot.out.CB$sig <- ifelse(plot.out.CB$padj < 0.05, "TRUE", "FALSE")
-plot.out2.CB <- subset(plot.out.CB,!is.na(plot.out.CB$sig) & plot.out.CB$contrast %in% c("BC","CB"))
+out.MO <- data.frame(res.MO)
+plot.out.MO <- merge(imp.MvO.rpm,out.MO,by.x="feature",by.y="row.names",all=F)
+plot.out.MO$sig <- ifelse(plot.out.MO$padj < 0.05, "TRUE", "FALSE")
+plot.out2.MO <- subset(plot.out.MO,!is.na(plot.out.MO$sig) & plot.out.MO$contrast %in% c("OM","MO"))
 
-plot.out2.CB$category <- ifelse(plot.out2.CB$padj < 0.05 & plot.out2.CB$log2FoldChange < -1 & (plot.out2.CB$maternal_preference > .9 | plot.out2.CB$maternal_preference < .1), "up",ifelse(plot.out2.CB$padj < 0.05 & plot.out2.CB$log2FoldChange > 1 & (plot.out2.CB$maternal_preference > .9 | plot.out2.CB$maternal_preference < .1),"down","notDE"))
+plot.out2.MO$category <- ifelse(plot.out2.MO$padj < 0.05 & plot.out2.MO$log2FoldChange < -1 & (plot.out2.MO$maternal_preference > .9 | plot.out2.MO$maternal_preference < .1), "up",ifelse(plot.out2.MO$padj < 0.05 & plot.out2.MO$log2FoldChange > 1 & (plot.out2.MO$maternal_preference > .9 | plot.out2.MO$maternal_preference < .1),"down","notDE"))
 
-plot.out2.CB$imprint <- ifelse(plot.out2.CB$category =="up" & plot.out2.CB$genome == "B73","MEG",
-                               ifelse(plot.out2.CB$category =="down" & plot.out2.CB$genome == "B73","PEG",
-                                      ifelse(plot.out2.CB$category =="down" & plot.out2.CB$genome == "NC358","MEG",
-                                             ifelse(plot.out2.CB$category =="up" & plot.out2.CB$genome == "NC358","PEG","no.imprint"))))
+plot.out2.MO$imprint <- ifelse(plot.out2.MO$category =="up" & plot.out2.MO$genome == "Mo17","MEG",
+                               ifelse(plot.out2.MO$category =="down" & plot.out2.MO$genome == "Mo17","PEG",
+                                      ifelse(plot.out2.MO$category =="down" & plot.out2.MO$genome == "Oh43","MEG",
+                                             ifelse(plot.out2.MO$category =="up" & plot.out2.MO$genome == "Oh43","PEG","no.imprint"))))
 
-k <- ggplot(plot.out2.CB,aes(x=imprint,y=maternal_preference,fill=imprint)) + geom_violin() + theme_classic() + theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()) + geom_abline(slope=0, intercept=.33) + geom_abline(slope=0, intercept=.66) + stat_summary(fun.data = give.n, geom = "text") + facet_grid(genome~feature_type) + scale_fill_manual(values = maize_pal("HighlandMAGIC"))
-k
-#plot.out2.CB$filter.imprint <- ifelse(plot.out2.CB$imprint == "MEG" & (plot.out2.CB$feature %in% rownames(peri.preferred) | plot.out2.CB$feature %in% peri.preferred.NC358),"filtered.MEG",plot.out2.CB$imprint)
+i <- ggplot(plot.out2.MO,aes(x=imprint,y=maternal_preference,fill=imprint)) + geom_violin() + theme_classic() + theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()) + geom_abline(slope=0, intercept=.33) + geom_abline(slope=0, intercept=.66) + stat_summary(fun.data = give.n, geom = "text") + facet_grid(genome~feature_type) + scale_fill_manual(values = maize_pal("HighlandMAGIC"))
+ 
+#plot.out2.MO$filter.imprint <- ifelse(plot.out2.MO$imprint == "MEG" & (plot.out2.MO$feature %in% rownames(peri.preferred) | plot.out2.MO$feature %in% peri.preferred.Oh43),"filtered.MEG",plot.out2.MO$imprint)
 ```
-
 ```{r}
-imp.all.de.DB <- imp.all2[,c(34,36,37,39)]
-rownames(imp.all.de.DB) <- imp.all2$ID
-#imp.all.de.keep.DB <- subset(imp.all.de.DB,rowSums(imp.all.de.DB >0) >= 3)
-imp.all.de.keep.DB <- subset(imp.all.de.DB,rowSums(imp.all.de.DB) >= 10)
-imp.all.de.keep.DB <- subset(imp.all.de.DB,rowMeans(imp.all.de.DB[,c(1:2)]) >= 0.5 | rowMeans(imp.all.de.DB[,c(3:4)]) >= 0.5) 
+imp.all.de.MK <- imp.all[,34:37]
+rownames(imp.all.de.MK) <- imp.all$ID
+#imp.all.de.keep.MK <- subset(imp.all.de.MK,rowSums(imp.all.de.MK >0) >= 3)
+imp.all.de.keep.MK <- subset(imp.all.de.MK,rowSums(imp.all.de.MK) >= 10)
+imp.all.de.keep.MK <- subset(imp.all.de.MK,rowMeans(imp.all.rpm2[,7:9]) >= 0.5 | rowMeans(imp.all.rpm2[,10:12]) >= 0.5) 
 
-sample.info.DB <- as.data.frame(cbind(paste(names(imp.all.de.keep.DB)),c("DB","DB","BD","BD")))
-rownames(sample.info.DB) <- sample.info.DB[,1]
-sample_list.DB <- sample.info.DB[,2]
-names(sample.info.DB) <- c("sample.info.DB","sample_list.DB")
+sample.info.MK <- as.data.frame(cbind(paste(names(imp.all.de.keep.MK)),c("KM","KM","MK","MK")))
+rownames(sample.info.MK) <- sample.info.MK[,1]
+sample_list.MK <- sample.info.MK[,2]
+names(sample.info.MK) <- c("sample.info.MK","sample_list.MK")
 
-dds.DB <- DESeqDataSetFromMatrix(countData = imp.all.de.keep.DB,colData = sample.info.DB, design = ~ sample_list.DB)
-dds.DB <- DESeq(dds.DB)
-res.DB <- results(dds.DB, lfcThreshold=1, altHypothesis = "greaterAbs")
+dds.MK <- DESeqDataSetFromMatrix(countData = imp.all.de.keep.MK,colData = sample.info.MK, design = ~ sample_list.MK)
+dds.MK <- DESeq(dds.MK)
+res.MK <- results(dds.MK, lfcThreshold=1, altHypothesis = "greaterAbs")
 #par(mfrow=c(2,2),mar=c(2,2,1,1))
 ylim <- c(-2.5,2.5)
-plotMA(res.DB, ylim=ylim); drawLines()
-
-rld <- vst(dds.DB, blind=FALSE)
-v <- plotPCA(rld,intgroup=c("sample.info.DB", "sample_list.DB"))
-v
+plotMA(res.MK, ylim=ylim); drawLines()
 ```
 
 Plot results with respect to RER
 ```{r}
-out.DB <- data.frame(res.DB)
-plot.out.DB <- merge(imp.DvB.rpm,out.DB,by.x="feature",by.y="row.names",all=F)
-plot.out.DB$sig <- ifelse(plot.out.DB$padj < 0.05, "TRUE", "FALSE")
-plot.out2.DB <- subset(plot.out.DB,!is.na(plot.out.DB$sig) & plot.out.DB$contrast %in% c("BD","DB"))
+out.MK <- data.frame(res.MK)
+plot.out.MK <- merge(imp.MvK.rpm,out.MK,by.x="feature",by.y="row.names",all=F)
+plot.out.MK$sig <- ifelse(plot.out.MK$padj < 0.05, "TRUE", "FALSE")
+plot.out2.MK <- subset(plot.out.MK,!is.na(plot.out.MK$sig) & plot.out.MK$contrast %in% c("KM","MK"))
 
-plot.out2.DB$category <- ifelse(plot.out2.DB$padj < 0.05 & plot.out2.DB$log2FoldChange < -1 & (plot.out2.DB$maternal_preference > .9 | plot.out2.DB$maternal_preference < .1), "up",ifelse(plot.out2.DB$padj < 0.05 & plot.out2.DB$log2FoldChange > 1 & (plot.out2.DB$maternal_preference > .9 | plot.out2.DB$maternal_preference < .1),"down","notDE"))
+plot.out2.MK$category <- ifelse(plot.out2.MK$padj < 0.05 & plot.out2.MK$log2FoldChange < -1 & (plot.out2.MK$maternal_preference > .9 | plot.out2.MK$maternal_preference < .1), "up",ifelse(plot.out2.MK$padj < 0.05 & plot.out2.MK$log2FoldChange > 1 & (plot.out2.MK$maternal_preference > .9 | plot.out2.MK$maternal_preference < .1),"down","notDE"))
 
-plot.out2.DB$imprint <- ifelse(plot.out2.DB$category =="up" & plot.out2.DB$genome == "B73","MEG",
-                               ifelse(plot.out2.DB$category =="down" & plot.out2.DB$genome == "B73","PEG",
-                                      ifelse(plot.out2.DB$category =="down" & plot.out2.DB$genome == "Ky21","MEG",
-                                             ifelse(plot.out2.DB$category =="up" & plot.out2.DB$genome == "Ky21","PEG","no.imprint"))))
+plot.out2.MK$imprint <- ifelse(plot.out2.MK$category =="up" & plot.out2.MK$genome == "Ki11","MEG",
+                               ifelse(plot.out2.MK$category =="down" & plot.out2.MK$genome == "Ki11","PEG",
+                                      ifelse(plot.out2.MK$category =="down" & plot.out2.MK$genome == "Mo17","MEG",
+                                             ifelse(plot.out2.MK$category =="up" & plot.out2.MK$genome == "Mo17","PEG","no.imprint"))))
 
-l <- ggplot(plot.out2.DB,aes(x=imprint,y=maternal_preference,fill=imprint)) + geom_violin() + theme_classic() + theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()) + geom_abline(slope=0, intercept=.33) + geom_abline(slope=0, intercept=.66) + stat_summary(fun.data = give.n, geom = "text") + facet_grid(genome~feature_type) + scale_fill_manual(values = maize_pal("HighlandMAGIC"))
-l
-#plot.out2.DB$filter.imprint <- ifelse(plot.out2.DB$imprint == "MEG" & (plot.out2.DB$feature %in% rownames(peri.preferred) | plot.out2.DB$feature %in% peri.preferred.Ky21),"filtered.MEG",plot.out2.DB$imprint)
+j <- ggplot(plot.out2.MK,aes(x=imprint,y=maternal_preference,fill=imprint)) + geom_violin() + theme_classic() + theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()) + geom_abline(slope=0, intercept=.33) + geom_abline(slope=0, intercept=.66) + stat_summary(fun.data = give.n, geom = "text") + facet_grid(genome~feature_type) + scale_fill_manual(values = maize_pal("HighlandMAGIC"))
+
+#plot.out2.MK$filter.imprint <- ifelse(plot.out2.MK$imprint == "MEG" & (plot.out2.MK$feature %in% rownames(peri.preferred) | plot.out2.MK$feature %in% peri.preferred.Ki11),"filtered.MEG",plot.out2.MK$imprint)
 ```
 
 
-
 ```{r}
-imp.all.de.FB <- imp.all2[,c(46:50)]
-rownames(imp.all.de.FB) <- imp.all2$ID
-#imp.all.de.keep.FB <- subset(imp.all.de.FB,rowSums(imp.all.de.FB >0) >= 3)
-imp.all.de.keep.FB <- subset(imp.all.de.FB,rowSums(imp.all.de.FB) >= 10)
-imp.all.de.keep.FB <- subset(imp.all.de.FB,rowMeans(imp.all.de.FB[,c(1:3)]) >= 0.5 | rowMeans(imp.all.de.FB[,c(4:5)]) >= 0.5) 
-
-sample.info.FB <- as.data.frame(cbind(paste(names(imp.all.de.keep.FB)),c("FB","FB","FB","BF","BF")))
-rownames(sample.info.FB) <- sample.info.FB[,1]
-sample_list.FB <- sample.info.FB[,2]
-names(sample.info.FB) <- c("sample.info.FB","sample_list.FB")
-
-dds.FB <- DESeqDataSetFromMatrix(countData = imp.all.de.FB,colData = sample.info.FB, design = ~ sample_list.FB)
-dds.FB <- DESeq(dds.FB)
-res.FB <- results(dds.FB, lfcThreshold=1, altHypothesis = "greaterAbs")
-#par(mfrow=c(2,2),mar=c(2,2,1,1))
-ylim <- c(-2.5,2.5)
-plotMA(res.FB, ylim=ylim); drawLines()
-
-rld <- vst(dds.FB, blind=FALSE)
-u <- plotPCA(rld,intgroup=c("sample.info.FB", "sample_list.FB"))
-u
-```
-
-Plot results with respect to RER
-```{r}
-out.FB <- data.frame(res.FB)
-plot.out.FB <- merge(imp.FvB.rpm,out.FB,by.x="feature",by.y="row.names",all=F)
-plot.out.FB$sig <- ifelse(plot.out.FB$padj < 0.05, "TRUE", "FALSE")
-plot.out2.FB <- subset(plot.out.FB,!is.na(plot.out.FB$sig) & plot.out.FB$contrast %in% c("BF","FB"))
-
-plot.out2.FB$category <- ifelse(plot.out2.FB$padj < 0.05 & plot.out2.FB$log2FoldChange < -1 & (plot.out2.FB$maternal_preference > .9 | plot.out2.FB$maternal_preference < .1), "up",ifelse(plot.out2.FB$padj < 0.05 & plot.out2.FB$log2FoldChange > 1 & (plot.out2.FB$maternal_preference > .9 | plot.out2.FB$maternal_preference < .1),"down","notDE"))
-
-plot.out2.FB$imprint <- ifelse(plot.out2.FB$category =="up" & plot.out2.FB$genome == "B73","MEG",
-                               ifelse(plot.out2.FB$category =="down" & plot.out2.FB$genome == "B73","PEG",
-                                      ifelse(plot.out2.FB$category =="down" & plot.out2.FB$genome == "M162W","MEG",
-                                             ifelse(plot.out2.FB$category =="up" & plot.out2.FB$genome == "M162W","PEG","no.imprint"))))
-
-n <- ggplot(plot.out2.FB,aes(x=imprint,y=maternal_preference,fill=imprint)) + geom_violin() + theme_classic() + theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()) + geom_abline(slope=0, intercept=.33) + geom_abline(slope=0, intercept=.66) + stat_summary(fun.data = give.n, geom = "text") + facet_grid(genome~feature_type) + scale_fill_manual(values = maize_pal("HighlandMAGIC"))
-n
-#plot.out2.FB$filter.imprint <- ifelse(plot.out2.FB$imprint == "MEG" & (plot.out2.FB$feature %in% rownames(peri.preferred) | plot.out2.FB$feature %in% peri.preferred.M162W),"filtered.MEG",plot.out2.FB$imprint)
-```
-
-```{r}
-imp.all.de.EB <- imp.all2[,c(40,41,43,44)]
-rownames(imp.all.de.EB) <- imp.all2$ID
-#imp.all.de.keep.EB <- subset(imp.all.de.EB,rowSums(imp.all.de.EB >0) >= 3)
-imp.all.de.keep.EB <- subset(imp.all.de.EB,rowSums(imp.all.de.EB) >= 10)
-imp.all.de.keep.EB <- subset(imp.all.de.EB,rowMeans(imp.all.de.EB[,c(1:2)]) >= 0.5 | rowMeans(imp.all.de.EB[,c(3:4)]) >= 0.5) 
-
-sample.info.EB <- as.data.frame(cbind(paste(names(imp.all.de.keep.EB)),c("EB","EB","BE","BE")))
-rownames(sample.info.EB) <- sample.info.EB[,1]
-sample_list.EB <- sample.info.EB[,2]
-names(sample.info.EB) <- c("sample.info.EB","sample_list.EB")
-
-dds.EB <- DESeqDataSetFromMatrix(countData = imp.all.de.EB,colData = sample.info.EB, design = ~ sample_list.EB)
-dds.EB <- DESeq(dds.EB)
-res.EB <- results(dds.EB, lfcThreshold=1, altHypothesis = "greaterAbs")
-#par(mfrow=c(2,2),mar=c(2,2,1,1))
-ylim <- c(-2.5,2.5)
-plotMA(res.EB, ylim=ylim); drawLines()
-
-rld <- vst(dds.EB, blind=FALSE)
-t <- plotPCA(rld,intgroup=c("sample.info.EB", "sample_list.EB"),ntop = 10000)
-t
-```
-
-Plot results with respect to RER
-```{r}
-out.EB <- data.frame(res.EB)
-plot.out.EB <- merge(imp.EvB.rpm,out.EB,by.x="feature",by.y="row.names",all=F)
-plot.out.EB$sig <- ifelse(plot.out.EB$padj < 0.05, "TRUE", "FALSE")
-plot.out2.EB <- subset(plot.out.EB,!is.na(plot.out.EB$sig) & plot.out.EB$contrast %in% c("BE","EB"))
-
-plot.out2.EB$category <- ifelse(plot.out2.EB$padj < 0.05 & plot.out2.EB$log2FoldChange < -1 & (plot.out2.EB$maternal_preference > .9 | plot.out2.EB$maternal_preference < .1), "up",ifelse(plot.out2.EB$padj < 0.05 & plot.out2.EB$log2FoldChange > 1 & (plot.out2.EB$maternal_preference > .9 | plot.out2.EB$maternal_preference < .1),"down","notDE"))
-
-plot.out2.EB$imprint <- ifelse(plot.out2.EB$category =="up" & plot.out2.EB$genome == "B73","MEG",
-                               ifelse(plot.out2.EB$category =="down" & plot.out2.EB$genome == "B73","PEG",
-                                      ifelse(plot.out2.EB$category =="down" & plot.out2.EB$genome == "CML333","MEG",
-                                             ifelse(plot.out2.EB$category =="up" & plot.out2.EB$genome == "CML333","PEG","no.imprint"))))
-
-o <- ggplot(plot.out2.EB,aes(x=imprint,y=maternal_preference,fill=imprint)) + geom_violin() + theme_classic() + theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()) + geom_abline(slope=0, intercept=.33) + geom_abline(slope=0, intercept=.66) + stat_summary(fun.data = give.n, geom = "text") + facet_grid(genome~feature_type) + scale_fill_manual(values = maize_pal("HighlandMAGIC"))
-o
-#plot.out2.EB$filter.imprint <- ifelse(plot.out2.EB$imprint == "MEG" & (plot.out2.EB$feature %in% rownames(peri.preferred) | plot.out2.EB$feature %in% peri.preferred.M37W),"filtered.MEG",plot.out2.EB$imprint)
-```
-
-```{r}
-imp.all.de.BW <- imp.all2[,c(14:19)]
-rownames(imp.all.de.BW) <- imp.all2$ID
-#imp.all.de.keep.BW <- subset(imp.all.de.BW,rowSums(imp.all.de.BW >0) >= 3)
-imp.all.de.keep.BW <- subset(imp.all.de.BW,rowSums(imp.all.de.BW) >= 10)
-imp.all.de.keep.BW <- subset(imp.all.de.BW,rowMeans(imp.all.de.BW[,c(1:3)]) >= 0.5 | rowMeans(imp.all.de.BW[,c(4:6)]) >= 0.5) 
+imp.all.de.BW <- imp.all[,14:19]
+rownames(imp.all.de.BW) <- imp.all$ID
+#imp.all.de.keep.BW <- subset(imp.all.de.BW,rowSums(imp.all.de.BW >0) >= 3) 
+imp.all.de.keep.BW <- subset(imp.all.de.BW,rowSums(imp.all.de.BW) >= 10) 
+imp.all.de.keep.BW <- subset(imp.all.de.BW,rowMeans(imp.all.rpm2[,1:3]) >= 0.5 | rowMeans(imp.all.rpm2[,4:6]) >= 0.5) 
 
 sample.info.BW <- as.data.frame(cbind(paste(names(imp.all.de.keep.BW)),c("WB","WB","WB","BW","BW","BW")))
 rownames(sample.info.BW) <- sample.info.BW[,1]
@@ -687,37 +482,29 @@ plot.out2.BW$imprint <- ifelse(plot.out2.BW$category =="up" & plot.out2.BW$genom
                                       ifelse(plot.out2.BW$category =="down" & plot.out2.BW$genome == "W22","MEG",
                                              ifelse(plot.out2.BW$category =="up" & plot.out2.BW$genome == "W22","PEG","no.imprint"))))
 
-p <- ggplot(plot.out2.BW,aes(x=imprint,y=maternal_preference,fill=imprint)) + geom_violin() + theme_classic() + theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()) + facet_grid(genome~feature_type) + geom_abline(slope=0, intercept=.33) + geom_abline(slope=0, intercept=.66) + stat_summary(fun.data = give.n, geom = "text") + facet_grid(genome~feature_type) + scale_fill_manual(values = maize_pal("HighlandMAGIC"))
-p
+k <- ggplot(plot.out2.BW,aes(x=imprint,y=maternal_preference,fill=imprint)) + geom_violin() + theme_classic() + theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()) + facet_grid(genome~feature_type) + geom_abline(slope=0, intercept=.33) + geom_abline(slope=0, intercept=.66) + stat_summary(fun.data = give.n, geom = "text") + facet_grid(genome~feature_type) + scale_fill_manual(values = maize_pal("HighlandMAGIC"))
 
-grid.arrange(e,f,g,h,k,l,n,o,p)
-
-##Here plot everything in one PCA and see if heterotic groups cluster together and which line is furthest removed 
+grid.arrange(e,f,g,h,i,j,k)
 ```
 
 Summarize imprinting calls
 ```{r}
 summary.BB <- data.frame(plot.out2.BB %>% group_by(genome,feature_type,imprint,contrast) %>% summarize(count = n()))
 summary.BO <- data.frame(plot.out2.BO %>% group_by(genome,feature_type,imprint,contrast) %>% summarize(count = n()))
+summary.MO <- data.frame(plot.out2.MO %>% group_by(genome,feature_type,imprint,contrast) %>% summarize(count = n()))
 summary.BK <- data.frame(plot.out2.BK %>% group_by(genome,feature_type,imprint,contrast) %>% summarize(count = n()))
 summary.BO_MN <- data.frame(plot.out2.BO_MN %>% group_by(genome,feature_type,imprint,contrast) %>% summarize(count = n()))
+summary.MK <- data.frame(plot.out2.MK %>% group_by(genome,feature_type,imprint,contrast) %>% summarize(count = n()))
 summary.BW <- data.frame(plot.out2.BW %>% group_by(genome,feature_type,imprint,contrast) %>% summarize(count = n()))
-summary.CB <- data.frame(plot.out2.CB %>% group_by(genome,feature_type,imprint,contrast) %>% summarize(count = n()))
-summary.DB <- data.frame(plot.out2.DB %>% group_by(genome,feature_type,imprint,contrast) %>% summarize(count = n()))
-summary.FB <- data.frame(plot.out2.FB %>% group_by(genome,feature_type,imprint,contrast) %>% summarize(count = n()))
-summary.EB <- data.frame(plot.out2.EB %>% group_by(genome,feature_type,imprint,contrast) %>% summarize(count = n()))
-
-
-
 #summary.wp <- data.frame(plot.out2.wp %>% group_by(genome,feature_type,filter.imprint,contrast) %>% summarize(count = n()))
 
-summary.combined <- rbind(summary.BB,summary.BO,summary.BK,summary.BO_MN,summary.BW,summary.CB,summary.DB,summary.FB,summary.EB)
+summary.combined <- rbind(summary.BB,summary.BO,summary.MO,summary.BK,summary.BO_MN,summary.MK,summary.BW)
 summary.combined
 
 summary.combined2 <- subset(summary.combined,summary.combined$imprint %in% c("MEG","PEG"))
 summary.combined2[summary.combined2$imprint == "PEG","count"] <- -summary.combined2[summary.combined2$imprint == "PEG","count"]
 summary.combined2$label <- paste(summary.combined2$genome,summary.combined2$contrast,sep="_")
-summary.combined2$label <- factor(summary.combined2$label, levels = c("B73_BB","B97_BB","B73_BO","Oh43_BO","B73_OB_MN","Oh43_OB_MN","B73_BK","Ki11_BK","B73_BW","W22_BW","NC358_CB","B73_CB","Ky21_DB","B73_DB","M162W_FB","B73_FB","CML333_EB","B73_EB"))
+summary.combined2$label <- factor(summary.combined2$label, levels = c("B73_BB","B97_BB","B73_BO","Oh43_BO","B73_BO_MN","Oh43_BO_MN","B73_BK","Ki11_BK","B73_BW","W22_BW","Mo17_MK","Ki11_MK","Mo17_MO","Oh43_MO"))
 
 ggplot() + geom_bar(aes(x=label,y=count,fill=imprint),data=summary.combined2,stat="identity",position = "identity") + theme_classic()  +  theme(axis.text.x = element_text(angle=90, hjust=1)) + facet_grid(.~feature_type,scales="free") + scale_fill_manual(values=c("magenta2","navy")) 
 ```
@@ -785,8 +572,49 @@ compare.BO.syntelogs.merge$imprint.Oh43[is.na(compare.BO.syntelogs.merge$imprint
 
 table(compare.BO.syntelogs.merge[,c("imprint.B73","imprint.Oh43")])
 ```
+```{r}
+compare.MO.syntelogs <- subset(plot.out2.MO,plot.out2.MO$feature_type == "gene")
 
+compare.MO.syntelogs$syntelog <- ifelse(compare.MO.syntelogs$feature %in% gene.key.MO.syntelogs$V5 | compare.MO.syntelogs$feature %in% gene.key.MO.syntelogs$V3, "syntelog","non.syntelog")
 
+table(compare.MO.syntelogs[,c("genome","imprint","syntelog")])
+
+compare.MO.syntelogs.Mo17 <- merge(subset(compare.MO.syntelogs,compare.MO.syntelogs$syntelog == "syntelog" & compare.MO.syntelogs$genome == "Mo17"),gene.key.MO.syntelogs,by.x="feature",by.y="V5",all.x=T)
+compare.MO.syntelogs.Oh43 <- subset(compare.MO.syntelogs,compare.MO.syntelogs$syntelog == "syntelog" & compare.MO.syntelogs$genome == "Oh43")
+compare.MO.syntelogs.merge <- merge(compare.MO.syntelogs.Mo17,compare.MO.syntelogs.Oh43,by.x = "V3",by.y="feature",all=T)
+
+names(compare.MO.syntelogs.merge) <- gsub(".x",".Mo17",names(compare.MO.syntelogs.merge),fixed = T)
+names(compare.MO.syntelogs.merge) <- gsub(".y",".Oh43",names(compare.MO.syntelogs.merge),fixed = T)
+
+compare.MO.syntelogs.merge$imprint.Mo17[is.na(compare.MO.syntelogs.merge$imprint.Mo17)] <- "no.imprint"
+compare.MO.syntelogs.merge$imprint.Oh43[is.na(compare.MO.syntelogs.merge$imprint.Oh43)] <- "no.imprint"
+compare.MO.syntelogs.merge$imprint.Mo17[is.na(compare.MO.syntelogs.merge$imprint.Mo17)] <- "no.imprint"
+compare.MO.syntelogs.merge$imprint.Oh43[is.na(compare.MO.syntelogs.merge$imprint.Oh43)] <- "no.imprint"
+
+table(compare.MO.syntelogs.merge[,c("imprint.Mo17","imprint.Oh43")])
+```
+
+```{r}
+compare.MK.syntelogs <- subset(plot.out2.MK,plot.out2.MK$feature_type == "gene")
+
+compare.MK.syntelogs$syntelog <- ifelse(compare.MK.syntelogs$feature %in% gene.key.MK.syntelogs$V5 | compare.MK.syntelogs$feature %in% gene.key.MK.syntelogs$V4, "syntelog","non.syntelog")
+
+table(compare.MK.syntelogs[,c("genome","imprint","syntelog")])
+
+compare.MK.syntelogs.MK17 <- merge(subset(compare.MK.syntelogs,compare.MK.syntelogs$syntelog == "syntelog" & compare.MK.syntelogs$genome == "Mo17"),gene.key.MK.syntelogs,by.x="feature",by.y="V5",all.x=T)
+compare.MK.syntelogs.Ki11 <- subset(compare.MK.syntelogs,compare.MK.syntelogs$syntelog == "syntelog" & compare.MK.syntelogs$genome == "Ki11")
+compare.MK.syntelogs.merge <- merge(compare.MK.syntelogs.MK17,compare.MK.syntelogs.Ki11,by.x = "V4",by.y="feature",all=T)
+
+names(compare.MK.syntelogs.merge) <- gsub(".x",".Mo17",names(compare.MK.syntelogs.merge),fixed = T)
+names(compare.MK.syntelogs.merge) <- gsub(".y",".Ki11",names(compare.MK.syntelogs.merge),fixed = T)
+
+compare.MK.syntelogs.merge$imprint.MK17[is.na(compare.MK.syntelogs.merge$imprint.Mo17)] <- "no.imprint"
+compare.MK.syntelogs.merge$imprint.Ki11[is.na(compare.MK.syntelogs.merge$imprint.Ki11)] <- "no.imprint"
+compare.MK.syntelogs.merge$imprint.MK17[is.na(compare.MK.syntelogs.merge$imprint.Mo17)] <- "no.imprint"
+compare.MK.syntelogs.merge$imprint.Ki11[is.na(compare.MK.syntelogs.merge$imprint.Ki11)] <- "no.imprint"
+
+table(compare.MK.syntelogs.merge[,c("imprint.Mo17","imprint.Ki11")])
+```
 ```{r}
 compare.BK.syntelogs <- subset(plot.out2.BK,plot.out2.BK$feature_type == "gene")
 
@@ -851,7 +679,7 @@ compare.BW.syntelogs.merge$imprint.W22[is.na(compare.BW.syntelogs.merge$imprint.
 
 table(compare.BW.syntelogs.merge[,c("imprint.B73","imprint.W22")])
 ```
-Here is where I leftoff for analysis including the new ones. 
+
 
 How many MEGs called in only one direction were due to cutoffs and no data? Use B73 by B97 contrast for numbers
 ```{r}
@@ -1163,7 +991,7 @@ Make distribution of all based on which libraries got included in DE calls
 ```{r}
 imp.recips1.rpm2 <- data.frame(rbind(subset(imp.BvB.rpm,imp.BvB.rpm$feature %in% rownames(imp.all.de.keep.BB)),subset(imp.BvO.rpm,imp.BvO.rpm$feature %in% rownames(imp.all.de.keep.BO)),subset(imp.BvW.rpm,imp.BvW.rpm$feature %in% rownames(imp.all.de.keep.BW))))
 
-imp.recips2.rpm2 <- data.frame(rbind(subset(imp.BvK.rpm,imp.BvK.rpm$feature %in% rownames(imp.all.de.keep.BK)),subset(imp.AvB.rpm,imp.AvB.rpm$feature %in% rownames(imp.all.de.keep.MO)),subset(imp.MvK.rpm,imp.MvK.rpm$feature %in% rownames(imp.all.de.keep.MK))))
+imp.recips2.rpm2 <- data.frame(rbind(subset(imp.BvK.rpm,imp.BvK.rpm$feature %in% rownames(imp.all.de.keep.BK)),subset(imp.MvO.rpm,imp.MvO.rpm$feature %in% rownames(imp.all.de.keep.MO)),subset(imp.MvK.rpm,imp.MvK.rpm$feature %in% rownames(imp.all.de.keep.MK))))
 
 imp.recips1.rpm2$A_mean <- rowMeans(imp.recips1.rpm2[,1:3])
 imp.recips1.rpm2$B_mean <- rowMeans(imp.recips1.rpm2[,4:6])
@@ -1417,8 +1245,8 @@ expression_BW <- subset(imp.BvW.rpm, imp.BvW.rpm$expression == "biparental")
 write.table(subset(imp.MvK.rpm$feature, imp.MvK.rpm$expression == "biparental"), "//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/mRNA_2021/MK_biparental.txt", row.names = FALSE,col.names = F, quote = F)
 expression_MK <- subset(imp.MvK.rpm, imp.MvK.rpm$expression == "biparental")
 
-write.table(subset(imp.AvB.rpm$feature, imp.AvB.rpm$expression == "biparental"), "//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/mRNA_2021/MO_biparental.txt", row.names = FALSE,col.names = F, quote = F)
-expression_MO <- subset(imp.AvB.rpm, imp.AvB.rpm$expression == "biparental")
+write.table(subset(imp.MvO.rpm$feature, imp.MvO.rpm$expression == "biparental"), "//las-dfs-01.las.iastate.edu/lss/research/sna-lab/kmh/projects/mRNA_2021/MO_biparental.txt", row.names = FALSE,col.names = F, quote = F)
+expression_MO <- subset(imp.MvO.rpm, imp.MvO.rpm$expression == "biparental")
 
 ```
 
